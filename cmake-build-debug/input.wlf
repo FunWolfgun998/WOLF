@@ -6,6 +6,7 @@ if(1):
     int o
     int i = 89
 elif(2):
+    int c = "c\n b\n"
     float a
     a -= 78
     if(67):

@@ -1,7 +1,6 @@
-#include "../../include/Lexer/Lexer.h"
-
 #include <iostream>
 
+#include "../../include/Lexer/Lexer.h"
 #include "../../include/Lexer/Token.h"
 #include "../../include/Lexer/StateToken.h"
 

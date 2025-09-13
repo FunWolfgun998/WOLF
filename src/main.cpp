@@ -48,15 +48,15 @@ int main(int argc, char* argv[]) {
             std::cout <<"'" << std::endl;;
         }
         std::cout << "Done Token"<< std::endl;
-        std::cout << "\n=== Abstract Syntax Tree ===" << std::endl;
-
-        // 3. Parsing
-        Parser parser(tokens);
-        auto ast = parser.ParseTokens();
-
-        // 4. Stampa l'AST
-        ASTPrinter printer(std::cout, true); // Pass true to show types
-        ast->accept(printer);
+        // std::cout << "\n=== Abstract Syntax Tree ===" << std::endl;
+        //
+        // // 3. Parsing
+        // Parser parser(tokens);
+        // auto ast = parser.ParseTokens();
+        //
+        // // 4. Stampa l'AST
+        // ASTPrinter printer(std::cout, true); // Pass true to show types
+        // ast->accept(printer);
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

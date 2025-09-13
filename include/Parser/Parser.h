@@ -6,9 +6,27 @@
 
 #include <vector>
 #include <memory>
-#include "../Lexer/Token.h"
+#include "../../include/Lexer/Lexer.h"
 #include "../../include/AST/AST.h"
 #include "Parser/Scope.h"
+
+class Parser {
+    public:
+    explicit Parser(std::vector<Token> tokens);
+    private:
+    std::vector<Token> tokens;
+    size_t pos = 0;
+
+    Token CurrentToken();
+    Token PeekToken();
+    bool match(TypeToken type); //Match only the type
+    bool match(TypeToken type, const std::string& value); // Match the type and the value saved with it
+    void error(const std::string& message); // Manage errors
+
+};
+
+/*
+
 class Parser {
 public:
     explicit Parser(std::vector<Token> tokens);
@@ -66,4 +84,5 @@ private:
 
 // Implementation would follow the same structure with clear separation
 // of concerns and consistent error handling
+*/
 #endif // MY_PARSER_PARSER_H
