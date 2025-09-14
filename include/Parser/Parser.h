@@ -23,6 +23,7 @@ class Parser {
     bool match(TypeToken type, const std::string& value); // Match the type and the value saved with it
     void error(const std::string& message); // Manage errors
 
+
 };
 
 /*
