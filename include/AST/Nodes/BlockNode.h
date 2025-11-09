@@ -5,7 +5,7 @@
 #ifndef BLOCKNODE_H
 #define BLOCKNODE_H
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 AST_NODE(BlockNode) {
     std::vector<ASTNodePtr> statements;
 

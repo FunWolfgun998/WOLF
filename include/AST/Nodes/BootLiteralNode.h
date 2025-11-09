@@ -6,7 +6,7 @@
 #define BOOTLITERALNODE_H
 
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 
 AST_NODE(BoolLiteralNode) {
     bool value;

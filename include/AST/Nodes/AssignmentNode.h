@@ -5,7 +5,7 @@
 #ifndef ASSIGNMENTNODE_H
 #define ASSIGNMENTNODE_H
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 AST_NODE(AssignmentNode) {
     std::string target;    // L-value (normally IdentifierNode or MemberAccessNode)
     ASTNodePtr value;     // R-value (expression to assign)

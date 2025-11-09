@@ -4,7 +4,7 @@
 
 #ifndef VARIABLEDECLNODE_H
 #define VARIABLEDECLNODE_H
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 
 AST_NODE(VariableDeclNode) {
     std::string name;           // Nome della variabile (es. "x")

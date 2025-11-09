@@ -5,7 +5,7 @@
 #ifndef STRINGLITERALNODE_H
 #define STRINGLITERALNODE_H
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 
 AST_NODE(StringLiteralNode) {
     std::string value;

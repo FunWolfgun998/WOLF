@@ -5,13 +5,12 @@ float f=7.98e67
 if(1):
     int o
     int i = 89
-elif(2):
+elif(id == 678 ): //else + if
     int c = "c\n b\n"
     float a
     a -= 78
     if(67):
         x = 67
-
 else:
     float z
     z*=67

@@ -1,7 +1,7 @@
 //
 // Created by Personal on 13/06/2025.
 //
-#include "AST/ASTPrinter.h"
+#include "../../test/ASTPrinter.h"
 #include "AST/Nodes/AllNodes.h"
 #include <iomanip>
 

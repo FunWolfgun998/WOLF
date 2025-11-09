@@ -5,7 +5,7 @@
 #ifndef NULLLITERALNODE_H
 #define NULLLITERALNODE_H
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 
 AST_NODE(NullLiteralNode) {
     public:

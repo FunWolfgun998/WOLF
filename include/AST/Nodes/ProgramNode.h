@@ -5,7 +5,7 @@
 #ifndef PROGRAMNODE_H
 #define PROGRAMNODE_H
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 AST_NODE(ProgramNode) {
     std::vector<ASTNodePtr> statements;
 

@@ -4,7 +4,7 @@
 
 #ifndef VARIABLEINITNODE_H
 #define VARIABLEINITNODE_H
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 
 AST_NODE(VariableInitNode) {//int = 567
     std::string name;           // Nome della variabile (es. "x")

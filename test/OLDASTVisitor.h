@@ -53,9 +53,9 @@ class AwaitNode;
 class CommentNode;
 class DirectiveNode;
 
-class ASTVisitor {
+class OLDASTVisitor {
 public:
-    virtual ~ASTVisitor() = default;
+    virtual ~OLDASTVisitor() = default;
     virtual void visit(const ProgramNode&) {}
     virtual void visit(const IntLiteralNode&) {}
     virtual void visit(const FloatLiteralNode&) {}

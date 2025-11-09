@@ -4,7 +4,7 @@
 
 #ifndef CHARLITERALNODE_H
 #define CHARLITERALNODE_H
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 
 AST_NODE(CharLiteralNode) {
     char value;

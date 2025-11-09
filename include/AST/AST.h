@@ -1,46 +1,8 @@
-#ifndef AST_H
-#define AST_H
+//
+// Created by Cristian on 09/11/2025.
+//
 
-#include "ASTNode.h"
+#ifndef WOLF_AST_H
+#define WOLF_AST_H
 
-// ======================================================
-// Additional utilities and forward declarations
-// ======================================================
-enum class NodeType {
-    // Dichiarazioni
-    Program,
-    VariableDecl,
-    FunctionDecl,
-    ClassDecl,
-
-    // Espressioni
-    BinaryExpr,
-    UnaryExpr,
-    CallExpr,
-    Identifier,
-
-    // Letterali
-    IntLiteral,
-    FloatLiteral,
-    StringLiteral,
-
-    // Statement
-    Block,
-    If,
-    For,
-    While,
-    Return,
-
-    // Altri
-    Import,
-    TypeAnnotation
-};
-
-// Helper per nodi che necessitano di NodeType
-template <typename Derived, NodeType Type>
-class TypedASTNode : public ASTNode<Derived> {
-public:
-    NodeType getType() const { return Type; }
-};
-
-#endif // AST_H
+#endif //WOLF_AST_H

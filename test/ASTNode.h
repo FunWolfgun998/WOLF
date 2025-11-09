@@ -7,14 +7,14 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include "AST/ASTVisitor.h"
+#include "OLDASTVisitor.h"
 // Forward declare ASTVisitor here
-class ASTVisitor;
+class OLDASTVisitor;
 
 class ASTNodeBase {
 public:
     virtual ~ASTNodeBase() = default;
-    virtual void accept(ASTVisitor& visitor) const = 0;
+    virtual void accept(OLDASTVisitor& visitor) const = 0;
 };
 class ProgramNode;
 class IntLiteralNode;
@@ -168,12 +168,12 @@ template <typename Derived>
 class ASTNode : public ASTNodeBase {
 public:
     // Version non-const
-    void accept(ASTVisitor& visitor) {
+    void accept(OLDASTVisitor& visitor) {
         visitor.visit(static_cast<Derived&>(*this));
     }
 
     // Version const
-    void accept(ASTVisitor& visitor) const {
+    void accept(OLDASTVisitor& visitor) const {
         visitor.visit(static_cast<const Derived&>(*this));
     }
 };

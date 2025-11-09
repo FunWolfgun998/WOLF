@@ -4,12 +4,12 @@
 #ifndef AST_PRINTER_H
 #define AST_PRINTER_H
 
-#include "ASTVisitor.h"
+#include "OLDASTVisitor.h"
 #include <ostream>
 #include <string>
 #include <vector>
 
-class ASTPrinter : public ASTVisitor {
+class ASTPrinter : public OLDASTVisitor {
 public:
     explicit ASTPrinter(std::ostream& out, bool showTypes = false);
 

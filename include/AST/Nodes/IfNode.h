@@ -5,7 +5,7 @@
 #ifndef IFNODE_H
 #define IFNODE_H
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 
 AST_NODE(IfNode) {
     ASTNodePtr condition;

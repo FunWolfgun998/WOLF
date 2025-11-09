@@ -5,7 +5,7 @@
 #ifndef UNARYEXPRNODE_H
 #define UNARYEXPRNODE_H
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 #include <string>
 
 AST_NODE(UnaryExprNode) {

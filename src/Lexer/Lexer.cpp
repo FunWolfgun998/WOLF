@@ -25,6 +25,11 @@ std::vector<Token> Lexer::getAllTokens()
     {
         CreateToken();
     }
+    if (pos >= input.size())
+    {
+        //End of File
+        Tokens.emplace_back(TypeToken::End, "EOF");
+    }
     return Tokens;
 }
 
@@ -34,12 +39,6 @@ void Lexer::CreateToken()
     {
     case StateToken::Neutral:
         {
-            if (pos >= input.size())
-            {
-                //End of File
-                Tokens.emplace_back(TypeToken::End, "EOF");
-                return;
-            }
             if (currentChar() == '\n')
             {
                 Tokens.emplace_back(TypeToken::Newline, "\\n");

@@ -4,7 +4,7 @@
 
 #ifndef FLOATLITERALNODE_H
 #define FLOATLITERALNODE_H
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 
 AST_NODE(FloatLiteralNode) {
     float value;

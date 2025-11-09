@@ -5,7 +5,7 @@
 #ifndef IDENTIFIERNODE_H
 #define IDENTIFIERNODE_H
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 #include <string>
 
 AST_NODE(IdentifierNode) {

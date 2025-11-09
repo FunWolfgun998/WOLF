@@ -5,7 +5,7 @@
 #ifndef BINARYEXPRNODE_H
 #define BINARYEXPRNODE_H
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 
 AST_NODE(BinaryExprNode){
     //The call that I'm creating is taking as base the base ASTNode and as parameter is taking itself

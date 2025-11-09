@@ -3,7 +3,7 @@
 #include <sstream>
 #include "../include/Lexer/Lexer.h"
 #include "Parser/Parser.h"
-#include "AST/ASTPrinter.h"
+#include "../test/ASTPrinter.h"
 
 // Funzione per leggere il contenuto di un file
 std::string readFile(const std::string& filePath) {
@@ -48,6 +48,8 @@ int main(int argc, char* argv[]) {
             std::cout <<"'" << std::endl;;
         }
         std::cout << "Done Token"<< std::endl;
+        Parser parser(tokens);
+        parser.parse();
         // std::cout << "\n=== Abstract Syntax Tree ===" << std::endl;
         //
         // // 3. Parsing

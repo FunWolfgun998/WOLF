@@ -5,7 +5,7 @@
 #ifndef INTLITERALNODE_H
 #define INTLITERALNODE_H
 
-#include "AST/ASTNode.h"
+#include "../../../test/ASTNode.h"
 
 AST_NODE(IntLiteralNode){
     public:

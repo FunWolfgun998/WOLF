@@ -6,23 +6,26 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 #include "../../include/Lexer/Lexer.h"
-#include "../../include/AST/AST.h"
 #include "Parser/Scope.h"
 
 class Parser {
     public:
     explicit Parser(std::vector<Token> tokens);
+    void parse();
     private:
+    //Internal state
     std::vector<Token> tokens;
     size_t pos = 0;
 
     Token CurrentToken();
-    Token PeekToken();
+    Token PeekToken(int n = 0);
+    void advance();
     bool match(TypeToken type); //Match only the type
     bool match(TypeToken type, const std::string& value); // Match the type and the value saved with it
+    void expect(TypeToken type, std::string error_message);
     void error(const std::string& message); // Manage errors
-
 
 };
 

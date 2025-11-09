@@ -11,15 +11,15 @@ add_executable(
         src/Parser/Parser.cpp
         include/Parser/Parser.h
         include/Lexer/Lexer.h
-        include/AST/AST.h
-        include/AST/ASTVisitor.h
+        test/AST.h
+        test/OLDASTVisitor.h
         test/ast_tests.cpp
         include/Lexer/Token.h
         test/parser_tests.cpp
-        include/AST/ASTPrinter.h
+        test/ASTPrinter.h
         src/AST/ASTPrinter.cpp
         include/Parser/ParseError.h
-        include/AST/ASTNode.h
+        test/ASTNode.h
         include/AST/Nodes/BinaryExprNode.h
         include/AST/Nodes/ProgramNode.h
         include/AST/Nodes/IntLiteralNode.h
@@ -39,6 +39,10 @@ add_executable(
         include/Lexer/StateToken.h
         include/Parser/Scope.h
         include/Parser/Symbol.h
+        include/AST/AST.h
+        include/AST/Visitor.h
+        include/AST/NodeType.h
+        include/AST/ASTNote.h
 )
 
 # Includi i file header
