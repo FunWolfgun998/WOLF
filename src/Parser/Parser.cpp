@@ -15,6 +15,7 @@ void Parser::parse() {
         advance();
     }
 }
+//test
 
 Token Parser::CurrentToken() {
     if (pos >= tokens.size()) {
