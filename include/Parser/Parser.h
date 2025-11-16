@@ -8,7 +8,8 @@
 #include <memory>
 #include <string>
 #include "../../include/Lexer/Lexer.h"
-#include "Parser/Scope.h"
+#include "../../include/AST/ASTNote.h"
+#include "../../test/AST.h"
 
 class Parser {
     public:
@@ -21,12 +22,15 @@ class Parser {
 
     Token CurrentToken();
     Token PeekToken(int n = 0);
+    Token ConsumeToken();
     void advance();
     bool match(TypeToken type); //Match only the type
     bool match(TypeToken type, const std::string& value); // Match the type and the value saved with it
     void expect(TypeToken type, std::string error_message);
     void error(const std::string& message); // Manage errors
-
+    bool isEndOfStatement();
+    bool IsInitialization(Token token); // Manage errors
+    std::unique_ptr<ASTNode> ParseDeclaration();
 };
 
 /*

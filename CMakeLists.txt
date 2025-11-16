@@ -43,6 +43,7 @@ add_executable(
         include/AST/Visitor.h
         include/AST/NodeType.h
         include/AST/ASTNote.h
+        test/OldVersionParser.cpp
 )
 
 # Includi i file header
