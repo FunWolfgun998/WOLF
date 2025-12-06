@@ -1,0 +1,92 @@
+WOLF compiler
+Alla parts of a compiler
+Lexering
+Detect based on the caracter what it is
+ x=a12+f45 -> (x)(=)(a12)(+)(f45)
+This prosess create words (called tokens) for a list of characters
+
+Parsing
+use of grammar to create the acceptable senteses
+x=a+b*/;-> Not acceptable
+x=a+b; -> acceptable
+
+Semantic analysis
+
+x = a+b;
+int = int + int ; ok
+x = a+b;
+int = char + Car; Error
+x = a+b;
+char = int + string; Error
+
+ok only if a+b return the same type of x
+find for each type
+create a entry 
+each declaration saved in the symbol table
+based of the data given the compiler will be able to check if semanticly correct
+
+Optimiser
+optimization for machine indipented NOT specific machine.
+
+Common subexpression elimination
+CSB
+x=a+b+c
+y=d/(a+b)
+a+b is common subexpression
+
+create a temporaly variable t
+
+t=a+b;
+x=t+c
+y=d/t
+
+not every time a optimization can make the code faster.
+
+In the optimizer you will find dipended machine parameters
+
+Backend is the machine depended part of the compiler
+x= a*b+c*sd
+assignment(x,+(*(a,b),*(c,b)))
+load a->r1
+load b->r2
+mult r1,r2->r3
+load c->r4
+load d->r5
+mult r4,r5->r6
+add r3,r6 ->r7
+store r7->x
+
+All registers here are virtual and a infinite amount that is not possible in real life. With register allocation we will map all virtual registers on real ones
+
+Instruction selection
+
+Selects the best sequence of instruction for the particular rappresentation.
+AST
+ |
+ V
+load a->r1
+load b->r2
+mult r1,r2->r3
+
+This abstract assembly from the AST is going to become actual instruction thanks to Instruction selection
+
+Instruction scheduling
+Given a set of instruction decide with is the best ordering
+
+Instead of 
+
+load a->r1
+load b->r2
+mult r1,r2->r3
+load c->r4
+load d->r5
+mult r4,r5->r6
+
+we can schedule like this:
+
+load a->r1
+load b->r2
+load c->r4
+load d->r5
+mult r1,r2->r3
+mult r4,r5->r6
