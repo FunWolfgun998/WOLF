@@ -90,3 +90,97 @@ load c->r4
 load d->r5
 mult r1,r2->r3
 mult r4,r5->r6
+7-12-2025
+Register allocation and Instruction Scheduling
+Frontend(Scanning, parsing and semantic analisis)->
+Optimizer(CSE-> machine indipendent)->
+Backend(Register allocation, Instruction Scheduling and Registry allocation-> machine dependent)
+
+Backend-> fast access of data to be reused-> Registers are the faster place where to store and access data
+
+x= a*b+c/d
+
+tree rappresentation
+Assing(x,+(*(a,b),/(c,d)))
+
+linear rappresentation
+load a -> r1
+load b -> r2
+mult r1,r2 -> r3 => this are virtual registers on a abstract assembly like code
+
+when we have 16 registers and 200 variables we can't store all the virtual registers in the physical ones so some are saved on the memory (fast but much slower and every time we need to be loaded to use it) -> this slows the process.
+
+Instruction selection
+
+What are the best machine instructions to implement this piece of code?
+
+Assing(x,+(*(a,b),/(c,d)))
+
+To convert the AST to linear intermidiate assembly code we need to convert depth-first by nature beacuse we cannot perform the + before doing the * and the /.
+
+load a -> r1
+load b -> r2
+mult r1,r2 -> r3
+load c -> r4
+load d -> r5
+div r4,r5 -> r6
+add r3,r6 -> r7
+store r7 -> x
+
+The creation of abstract assembly is that we consider having infinite registers-> virtual
+a,b,c,d and x are memory address
+
+This is ILOC (Intermediate Language for a Optimizing Compiler)
+
+Registry allocation
+given the ILOC:
+load a -> r1
+load b -> r2
+mult r1,r2 -> r3
+load c -> r4
+load d -> r5
+div r4,r5 -> r6
+add r3,r6 -> r7
+store r7 -> x
+
+From the infinite virtual registers we need to assing the physica finite registers.
+Assuming that we have a machine with 3 physical registers p1,p2,p3:
+
+r1->p1
+r2->p2
+r3->p1 We coudl do it because in our original code r1 and r2 aren't used again, we can use p1.
+ADD r1,r7->r8 <= added line as example
+In this new case we still need r1 in the code so we can't reuse p1. We always need to keep the virtual register on the same physical one until we are done with it. Live range of the register is the distace between the definition and the last use.
+r4->p2
+r5->p3
+r6->p2
+r7->p1
+
+Assuming that we have a machine with 2 physical registers p1, p2:
+r1->p1
+r2->p2
+r3->p1
+r4->p2
+r5 -> problem -> both physical registers are live and are still need it in the future. We can store p1 in a memt(temporaly). This actually adds an instruction to the code.
+store p1(r3) -> memt
+r5->p1
+r6->p1
+load memt -> r3
+memt->p2
+r7->p1
+With fewer registers we coudn't map each virtual register, and because of that is had to some storing and loading. In this case of storing is called spilling
+
+load a -> r1
+load b -> r2
+mult r1,r2 -> r3
+store r3 -> memt =>spill-> this add instruction and slow the process
+load c -> r4
+
+The job of the registry allocation is to map all the virtual registers and at the same time minimize spilling
+
+
+
+
+
+
+
