@@ -235,7 +235,7 @@ To do that it would use the instruction scheduler where based of de independance
 (7) 12|12 add r5,r6 -> r7
 (8) 13|14 store r7 -> x
 Now thanks to instruction scheduling we need only 14 cycles.
-But the fact that we use less cycles dosen't mean that we use less registes. This in facts uses more registers at the same time. In the first (no instruction scheduling) the peak register pressure il 3 in the 5th instruction. In the second (with instruction scheduling) the peak register pressure is 4 in the 4th instruction.
+But the fact that we use less cycles dosen't mean that we use less registes. This in facts uses more registers at the same time. In the first (no instruction scheduling) the peak register pressure is 3 in the 5th instruction. In the second (with instruction scheduling) the peak register pressure is 4 in the 4th instruction.
 
 So in the first case with pipeline we have 17 cycles and we need 3 physical registers and in the second we have 14 cycles and we need 4 physical registers
 So what the compiler should do?
@@ -243,6 +243,7 @@ It depend based on the architecture/machine, in the number of registers. any rea
 NP-complete problem is a class of problem that are equivalent to each other, that have no polynomial time solution, so no polynomial time algorithm that create always the best optimal solution.
 The algorithm that we have is exponential/factorial takes lots of time, therfore is not practical/possible to use.
 Compilers use certain heuristics, something that is not optimal but something similar to the optimal solution in most cases.
+
 
 
 
