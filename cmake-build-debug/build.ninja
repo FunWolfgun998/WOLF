@@ -39,7 +39,7 @@ include CMakeFiles/rules.ninja
 #############################################
 # Logical path to working directory; prefix for absolute paths.
 
-cmake_ninja_workdir = /home/cristian/CLionProjects/Wolf/cmake-build-debug/
+cmake_ninja_workdir = D$:/Progetti/WOLF/cmake-build-debug/
 # =============================================================================
 # Object build statements for EXECUTABLE target Wolf
 
@@ -49,61 +49,29 @@ cmake_ninja_workdir = /home/cristian/CLionProjects/Wolf/cmake-build-debug/
 
 build cmake_object_order_depends_target_Wolf: phony || .
 
-build CMakeFiles/Wolf.dir/src/main.cpp.o: CXX_COMPILER__Wolf_unscanned_Debug /home/cristian/CLionProjects/Wolf/src/main.cpp || cmake_object_order_depends_target_Wolf
+build CMakeFiles/Wolf.dir/src/main.cpp.obj: CXX_COMPILER__Wolf_unscanned_Debug D$:/Progetti/WOLF/src/main.cpp || cmake_object_order_depends_target_Wolf
   CONFIG = Debug
-  DEP_FILE = CMakeFiles/Wolf.dir/src/main.cpp.o.d
+  DEP_FILE = CMakeFiles\Wolf.dir\src\main.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
-  INCLUDES = -I/home/cristian/CLionProjects/Wolf/include
-  OBJECT_DIR = CMakeFiles/Wolf.dir
-  OBJECT_FILE_DIR = CMakeFiles/Wolf.dir/src
+  INCLUDES = -ID:/Progetti/WOLF/include
+  OBJECT_DIR = CMakeFiles\Wolf.dir
+  OBJECT_FILE_DIR = CMakeFiles\Wolf.dir\src
 
-build CMakeFiles/Wolf.dir/src/Lexer/Lexer.cpp.o: CXX_COMPILER__Wolf_unscanned_Debug /home/cristian/CLionProjects/Wolf/src/Lexer/Lexer.cpp || cmake_object_order_depends_target_Wolf
+build CMakeFiles/Wolf.dir/src/Lexer/Lexer.cpp.obj: CXX_COMPILER__Wolf_unscanned_Debug D$:/Progetti/WOLF/src/Lexer/Lexer.cpp || cmake_object_order_depends_target_Wolf
   CONFIG = Debug
-  DEP_FILE = CMakeFiles/Wolf.dir/src/Lexer/Lexer.cpp.o.d
+  DEP_FILE = CMakeFiles\Wolf.dir\src\Lexer\Lexer.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
-  INCLUDES = -I/home/cristian/CLionProjects/Wolf/include
-  OBJECT_DIR = CMakeFiles/Wolf.dir
-  OBJECT_FILE_DIR = CMakeFiles/Wolf.dir/src/Lexer
+  INCLUDES = -ID:/Progetti/WOLF/include
+  OBJECT_DIR = CMakeFiles\Wolf.dir
+  OBJECT_FILE_DIR = CMakeFiles\Wolf.dir\src\Lexer
 
-build CMakeFiles/Wolf.dir/src/Parser/Parser.cpp.o: CXX_COMPILER__Wolf_unscanned_Debug /home/cristian/CLionProjects/Wolf/src/Parser/Parser.cpp || cmake_object_order_depends_target_Wolf
+build CMakeFiles/Wolf.dir/src/Lexer/Token.cpp.obj: CXX_COMPILER__Wolf_unscanned_Debug D$:/Progetti/WOLF/src/Lexer/Token.cpp || cmake_object_order_depends_target_Wolf
   CONFIG = Debug
-  DEP_FILE = CMakeFiles/Wolf.dir/src/Parser/Parser.cpp.o.d
+  DEP_FILE = CMakeFiles\Wolf.dir\src\Lexer\Token.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
-  INCLUDES = -I/home/cristian/CLionProjects/Wolf/include
-  OBJECT_DIR = CMakeFiles/Wolf.dir
-  OBJECT_FILE_DIR = CMakeFiles/Wolf.dir/src/Parser
-
-build CMakeFiles/Wolf.dir/test/ast_tests.cpp.o: CXX_COMPILER__Wolf_unscanned_Debug /home/cristian/CLionProjects/Wolf/test/ast_tests.cpp || cmake_object_order_depends_target_Wolf
-  CONFIG = Debug
-  DEP_FILE = CMakeFiles/Wolf.dir/test/ast_tests.cpp.o.d
-  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
-  INCLUDES = -I/home/cristian/CLionProjects/Wolf/include
-  OBJECT_DIR = CMakeFiles/Wolf.dir
-  OBJECT_FILE_DIR = CMakeFiles/Wolf.dir/test
-
-build CMakeFiles/Wolf.dir/test/parser_tests.cpp.o: CXX_COMPILER__Wolf_unscanned_Debug /home/cristian/CLionProjects/Wolf/test/parser_tests.cpp || cmake_object_order_depends_target_Wolf
-  CONFIG = Debug
-  DEP_FILE = CMakeFiles/Wolf.dir/test/parser_tests.cpp.o.d
-  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
-  INCLUDES = -I/home/cristian/CLionProjects/Wolf/include
-  OBJECT_DIR = CMakeFiles/Wolf.dir
-  OBJECT_FILE_DIR = CMakeFiles/Wolf.dir/test
-
-build CMakeFiles/Wolf.dir/src/AST/ASTPrinter.cpp.o: CXX_COMPILER__Wolf_unscanned_Debug /home/cristian/CLionProjects/Wolf/src/AST/ASTPrinter.cpp || cmake_object_order_depends_target_Wolf
-  CONFIG = Debug
-  DEP_FILE = CMakeFiles/Wolf.dir/src/AST/ASTPrinter.cpp.o.d
-  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
-  INCLUDES = -I/home/cristian/CLionProjects/Wolf/include
-  OBJECT_DIR = CMakeFiles/Wolf.dir
-  OBJECT_FILE_DIR = CMakeFiles/Wolf.dir/src/AST
-
-build CMakeFiles/Wolf.dir/src/AST/ASTNode.cpp.o: CXX_COMPILER__Wolf_unscanned_Debug /home/cristian/CLionProjects/Wolf/src/AST/ASTNode.cpp || cmake_object_order_depends_target_Wolf
-  CONFIG = Debug
-  DEP_FILE = CMakeFiles/Wolf.dir/src/AST/ASTNode.cpp.o.d
-  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
-  INCLUDES = -I/home/cristian/CLionProjects/Wolf/include
-  OBJECT_DIR = CMakeFiles/Wolf.dir
-  OBJECT_FILE_DIR = CMakeFiles/Wolf.dir/src/AST
+  INCLUDES = -ID:/Progetti/WOLF/include
+  OBJECT_DIR = CMakeFiles\Wolf.dir
+  OBJECT_FILE_DIR = CMakeFiles\Wolf.dir\src\Lexer
 
 
 # =============================================================================
@@ -111,23 +79,25 @@ build CMakeFiles/Wolf.dir/src/AST/ASTNode.cpp.o: CXX_COMPILER__Wolf_unscanned_De
 
 
 #############################################
-# Link the executable Wolf
+# Link the executable Wolf.exe
 
-build Wolf: CXX_EXECUTABLE_LINKER__Wolf_Debug CMakeFiles/Wolf.dir/src/main.cpp.o CMakeFiles/Wolf.dir/src/Lexer/Lexer.cpp.o CMakeFiles/Wolf.dir/src/Parser/Parser.cpp.o CMakeFiles/Wolf.dir/test/ast_tests.cpp.o CMakeFiles/Wolf.dir/test/parser_tests.cpp.o CMakeFiles/Wolf.dir/src/AST/ASTPrinter.cpp.o CMakeFiles/Wolf.dir/src/AST/ASTNode.cpp.o
+build Wolf.exe: CXX_EXECUTABLE_LINKER__Wolf_Debug CMakeFiles/Wolf.dir/src/main.cpp.obj CMakeFiles/Wolf.dir/src/Lexer/Lexer.cpp.obj CMakeFiles/Wolf.dir/src/Lexer/Token.cpp.obj
   CONFIG = Debug
   FLAGS = -g
-  OBJECT_DIR = CMakeFiles/Wolf.dir
-  POST_BUILD = :
-  PRE_LINK = :
-  TARGET_FILE = Wolf
-  TARGET_PDB = Wolf.dbg
+  LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+  OBJECT_DIR = CMakeFiles\Wolf.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_FILE = Wolf.exe
+  TARGET_IMPLIB = libWolf.dll.a
+  TARGET_PDB = Wolf.exe.dbg
 
 
 #############################################
 # Utility command for edit_cache
 
 build CMakeFiles/edit_cache.util: CUSTOM_COMMAND
-  COMMAND = cd /home/cristian/CLionProjects/Wolf/cmake-build-debug && /snap/clion/367/bin/cmake/linux/x64/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
+  COMMAND = C:\Windows\system32\cmd.exe /C "cd /D D:\Progetti\WOLF\cmake-build-debug && "C:\Program Files\JetBrains\CLion 2025.2.3\bin\cmake\win\x64\bin\cmake.exe" -E echo "No interactive CMake dialog available.""
   DESC = No interactive CMake dialog available...
   restat = 1
 
@@ -138,7 +108,7 @@ build edit_cache: phony CMakeFiles/edit_cache.util
 # Utility command for rebuild_cache
 
 build CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
-  COMMAND = cd /home/cristian/CLionProjects/Wolf/cmake-build-debug && /snap/clion/367/bin/cmake/linux/x64/bin/cmake --regenerate-during-build -S/home/cristian/CLionProjects/Wolf -B/home/cristian/CLionProjects/Wolf/cmake-build-debug
+  COMMAND = C:\Windows\system32\cmd.exe /C "cd /D D:\Progetti\WOLF\cmake-build-debug && "C:\Program Files\JetBrains\CLion 2025.2.3\bin\cmake\win\x64\bin\cmake.exe" --regenerate-during-build -SD:\Progetti\WOLF -BD:\Progetti\WOLF\cmake-build-debug"
   DESC = Running CMake to regenerate build system...
   pool = console
   restat = 1
@@ -148,22 +118,24 @@ build rebuild_cache: phony CMakeFiles/rebuild_cache.util
 # =============================================================================
 # Target aliases.
 
+build Wolf: phony Wolf.exe
+
 # =============================================================================
 # Folder targets.
 
 # =============================================================================
 
 #############################################
-# Folder: /home/cristian/CLionProjects/Wolf/cmake-build-debug
+# Folder: D:/Progetti/WOLF/cmake-build-debug
 
 build codegen: phony
 
 # =============================================================================
 
 #############################################
-# Folder: /home/cristian/CLionProjects/Wolf/cmake-build-debug
+# Folder: D:/Progetti/WOLF/cmake-build-debug
 
-build all: phony Wolf
+build all: phony Wolf.exe
 
 # =============================================================================
 # Built-in targets
@@ -172,14 +144,14 @@ build all: phony Wolf
 #############################################
 # Re-run CMake if any of its inputs changed.
 
-build build.ninja /home/cristian/CLionProjects/Wolf/cmake-build-debug/cmake_install.cmake: RERUN_CMAKE | /home/cristian/CLionProjects/Wolf/CMakeLists.txt /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeCInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeCXXInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeCommonLanguageInclude.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeGenericSystem.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeInitializeConfigs.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeLanguageInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeSystemSpecificInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeSystemSpecificInitialize.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Compiler/CMakeCommonCompilerMacros.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Compiler/GNU-C.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Compiler/GNU-CXX.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Compiler/GNU.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Internal/CMakeCLinkerInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Internal/CMakeCXXLinkerInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Internal/CMakeCommonLinkerInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/GNU.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/Linux-C.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/Linux-CXX.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/Linux-GNU-C.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/Linux-GNU-CXX.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/Linux-GNU.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linux-GNU-C.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linux-GNU-CXX.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linux-GNU.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linux-Initialize.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linux.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/UnixPaths.cmake CMakeCache.txt CMakeFiles/4.0.2/CMakeCCompiler.cmake CMakeFiles/4.0.2/CMakeCXXCompiler.cmake CMakeFiles/4.0.2/CMakeSystem.cmake
+build build.ninja D$:/Progetti/WOLF/cmake-build-debug/cmake_install.cmake: RERUN_CMAKE | C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeRCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Compiler/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Compiler/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Compiler/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Internal/CMakeCLinkerInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Internal/CMakeCXXLinkerInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Internal/CMakeCommonLinkerInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Linker/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Linker/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Linker/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Linker/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Linker/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Linker/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Linker/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-GNU-C-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-GNU-CXX-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-Initialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-windres.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/WindowsPaths.cmake CMakeCache.txt CMakeFiles/4.0.2/CMakeCCompiler.cmake CMakeFiles/4.0.2/CMakeCXXCompiler.cmake CMakeFiles/4.0.2/CMakeRCCompiler.cmake CMakeFiles/4.0.2/CMakeSystem.cmake D$:/Progetti/WOLF/CMakeLists.txt
   pool = console
 
 
 #############################################
 # A missing CMake input file is not an error.
 
-build /home/cristian/CLionProjects/Wolf/CMakeLists.txt /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeCInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeCXXInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeCommonLanguageInclude.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeGenericSystem.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeInitializeConfigs.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeLanguageInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeSystemSpecificInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/CMakeSystemSpecificInitialize.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Compiler/CMakeCommonCompilerMacros.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Compiler/GNU-C.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Compiler/GNU-CXX.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Compiler/GNU.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Internal/CMakeCLinkerInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Internal/CMakeCXXLinkerInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Internal/CMakeCommonLinkerInformation.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/GNU.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/Linux-C.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/Linux-CXX.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/Linux-GNU-C.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/Linux-GNU-CXX.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linker/Linux-GNU.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linux-GNU-C.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linux-GNU-CXX.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linux-GNU.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linux-Initialize.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/Linux.cmake /snap/clion/367/bin/cmake/linux/x64/share/cmake-4.0/Modules/Platform/UnixPaths.cmake CMakeCache.txt CMakeFiles/4.0.2/CMakeCCompiler.cmake CMakeFiles/4.0.2/CMakeCXXCompiler.cmake CMakeFiles/4.0.2/CMakeSystem.cmake: phony
+build C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeRCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Compiler/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Compiler/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Compiler/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Internal/CMakeCLinkerInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Internal/CMakeCXXLinkerInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Internal/CMakeCommonLinkerInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Linker/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Linker/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Linker/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Linker/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Linker/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Linker/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Linker/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-GNU-C-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-GNU-CXX-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-Initialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows-windres.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/Windows.cmake C$:/Program$ Files/JetBrains/CLion$ 2025.2.3/bin/cmake/win/x64/share/cmake-4.0/Modules/Platform/WindowsPaths.cmake CMakeCache.txt CMakeFiles/4.0.2/CMakeCCompiler.cmake CMakeFiles/4.0.2/CMakeCXXCompiler.cmake CMakeFiles/4.0.2/CMakeRCCompiler.cmake CMakeFiles/4.0.2/CMakeSystem.cmake D$:/Progetti/WOLF/CMakeLists.txt: phony
 
 
 #############################################

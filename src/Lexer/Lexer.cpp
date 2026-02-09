@@ -1,15 +1,15 @@
 #include <iostream>
 
 #include "../../include/Lexer/Lexer.h"
+#include "../../include/Lexer/TokenType.h"
 #include "../../include/Lexer/Token.h"
-#include "../../include/Lexer/StateToken.h"
 
 Lexer::Lexer(std::string input)
     : input{std::move(input)},
       pos{0},
       indentStack{0},
       Tokens{},
-      currentState{StateToken::Neutral},
+      currentState{Token::Neutral},
       atLineStart{true}
 {
 }
@@ -37,12 +37,12 @@ void Lexer::CreateToken()
 {
     switch (currentState)
     {
-    case StateToken::Neutral:
+    case Token::Neutral:
         {
             if (currentChar() == '\n')
             {
                 Tokens.emplace_back(TypeToken::Newline, "\\n");
-                currentState = StateToken::Indentation;
+                currentState = Token::Indentation;
                 break;
             }
             if (currentChar() == ' ')
@@ -52,32 +52,32 @@ void Lexer::CreateToken()
             }
             if (isOperator())
             {
-                currentState = StateToken::Op;
+                currentState = Token::Op;
                 break;
             }
             if (std::isalpha(currentChar()) || currentChar() == '_')
             {
-                currentState = StateToken::Identifier;
+                currentState = Token::Identifier;
                 break;
             }
             if (std::isdigit(currentChar()) || currentChar() == '.')
             {
-                currentState = StateToken::Number;
+                currentState = Token::Number;
                 break;
             }
             if (currentChar() == '\'')
             {
-                currentState = StateToken::Char;
+                currentState = Token::Char;
                 break;
             }
             if (currentChar() == '\"')
             {
-                currentState = StateToken::String;
+                currentState = Token::String;
                 break;
             }
 
         }
-    case StateToken::Indentation:
+    case Token::Indentation:
         {
             int count = 0;
             while (pos < input.size())
@@ -92,7 +92,7 @@ void Lexer::CreateToken()
             atLineStart = false;
             if (indent == lastIndent)
             {
-                currentState = StateToken::Neutral;
+                currentState = Token::Neutral;
                 break;
             }
             if (indent > lastIndent)
@@ -103,7 +103,7 @@ void Lexer::CreateToken()
                     indentStack.push_back(lastIndent);
                     Tokens.emplace_back(TypeToken::Indent, std::to_string(lastIndent));
                 }
-                currentState = StateToken::Neutral;
+                currentState = Token::Neutral;
                 break;
             }
             if (indent < lastIndent)
@@ -113,11 +113,11 @@ void Lexer::CreateToken()
                     indentStack.pop_back();
                     Tokens.emplace_back(TypeToken::Dedent, std::to_string(indentStack.back()));
                 }
-                currentState = StateToken::Neutral;
+                currentState = Token::Neutral;
                 break;
             }
         }
-    case StateToken::Op:
+    case Token::Op:
         {
             std::string op (1, currentChar());
             consumeChar();
@@ -127,10 +127,10 @@ void Lexer::CreateToken()
                 op+=consumeChar();
             }
             Tokens.emplace_back(getOperatorToken(op), op);
-            currentState = StateToken::Neutral;
+            currentState = Token::Neutral;
             break;
         }
-    case StateToken::Identifier:
+    case Token::Identifier:
         {
             size_t start = pos;
             while (pos < input.size() && (std::isalnum(input[pos]) || input[pos] == '_'))
@@ -140,10 +140,10 @@ void Lexer::CreateToken()
             std::string word = input.substr(start, pos - start);
             TypeToken type = getKeywordToken(word);
             Tokens.emplace_back(type, word);
-            currentState = StateToken::Neutral;
+            currentState = Token::Neutral;
             break;
         }
-    case StateToken::Number: {
+    case Token::Number: {
             const char* start = input.data() + pos;
             char* end;
             strtod(start, &end);
@@ -159,10 +159,10 @@ void Lexer::CreateToken()
 
                 Tokens.emplace_back(is_float ? TypeToken::FloatValue : TypeToken::IntValue,std::string(start, end - start));
             }
-            currentState = StateToken::Neutral;
+            currentState = Token::Neutral;
             break;
     }
-    case StateToken::SigleLineComment:
+    case Token::SigleLineComment:
         {
             size_t start = pos;
             while (pos < input.size() && input[pos] != '\n')
@@ -172,10 +172,10 @@ void Lexer::CreateToken()
             std::string comment = input.substr(start, pos - start);
             Tokens.emplace_back(TypeToken::Comment, comment);
 
-            currentState = StateToken::Neutral;
+            currentState = Token::Neutral;
             break;
         }
-    case StateToken::MultiLineComment:
+    case Token::MultiLineComment:
         {
             const size_t start = pos;
             while (pos + 1 < input.size())
@@ -183,7 +183,7 @@ void Lexer::CreateToken()
                 if (input[pos] == '*' && input[pos + 1] == '/')
                 {
                     Tokens.emplace_back(TypeToken::Comment, input.substr(start, pos - start));
-                    currentState = StateToken::Neutral;
+                    currentState = Token::Neutral;
                     pos += 2;
                     return;
                 }
@@ -191,16 +191,16 @@ void Lexer::CreateToken()
             }
 
             Tokens.emplace_back(TypeToken::Comment, input.substr(start, pos - start));
-            currentState = StateToken::Neutral;
+            currentState = Token::Neutral;
             break;
         }
-    case StateToken::Char:
+    case Token::Char:
         {
             const size_t start_pos = pos;
             auto fail = [&]()
             {
                 Tokens.emplace_back(TypeToken::Unknown, input.substr(start_pos, pos - start_pos));
-                currentState = StateToken::Neutral;
+                currentState = Token::Neutral;
             };
 
             if (pos >= input.size())
@@ -253,10 +253,10 @@ void Lexer::CreateToken()
                 Tokens.emplace_back(TypeToken::CharValue, std::string(1, char_value));
             }
 
-            currentState = StateToken::Neutral;
+            currentState = Token::Neutral;
             break;
         }
-    case StateToken::String:
+    case Token::String:
         {
             std::string string_value;
 
@@ -308,7 +308,7 @@ void Lexer::CreateToken()
                 Tokens.emplace_back(TypeToken::StringValue, string_value);
             }
 
-            currentState = StateToken::Neutral;
+            currentState = Token::Neutral;
             break;
         }
     default:

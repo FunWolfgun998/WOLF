@@ -1,66 +1,54 @@
-#ifndef MY_PARSER_LEXER_H
-#define MY_PARSER_LEXER_H
+#ifndef WOLF_COMPILER_LEXER_H
+#define WOLF_COMPILER_LEXER_H
 
-#define tab_value 4
 #include <string>
 #include <vector>
-#include <cstdint>
-#include <stdexcept>
-#include <cstring>
+#include <unordered_map>
 #include "Token.h"
-#include "StateToken.h"
-
 
 class Lexer {
 public:
-    explicit Lexer(std::string input);
-    struct LexerError : std::runtime_error {
-        using std::runtime_error::runtime_error;
-    };
-    std::vector<Token> getAllTokens();
+    // Costruttore: prende il codice sorgente intero
+    explicit Lexer(std::string source);
+
+    // Metodo principale: genera la lista di tutti i token
+    std::vector<Token> tokenize();
 
 private:
-    std::string input;
-    size_t pos = 0;
-    std::vector<int> indentStack;
-    std::vector<Token> Tokens;
-    StateToken currentState;
-    bool atLineStart = true;
-    void recoverFromError() {
-        // Skip until next valid token start
-        while (pos < input.size()) {
-            char c = input[pos];
-            if (isalpha(c) || isdigit(c) || strchr("_'\".+-*/=<>!&|", c) || c == '\n') {
-                break;
-            }
-            pos++;
-        }
-        currentState = StateToken::Neutral;
-    }
+    std::string source;
+    std::vector<Token> tokens;
 
-    void emitErrorToken(const std::string& value) {
-        Tokens.emplace_back(TypeToken::Unknown, value);
-        recoverFromError();
-    }
+    // Cursori per la navigazione
+    size_t start = 0;   // Inizio del token corrente
+    size_t current = 0; // Carattere attuale
+    int line = 1;
+    int column = 1;
 
-    void CreateToken();
+    // Gestione Indentazione (Python Style)
+    std::vector<int> indentStack; // Stack dei livelli di indentazione (0, 4, 8...)
 
+    // Mappa per le Keywords (stringa -> tipo)
+    std::unordered_map<std::string, TokenType> keywords;
 
-    static TypeToken getKeywordToken(const std::string& str);
-    static TypeToken getOperatorToken(const std::string& str);
+    // --- Metodi Helper (Primitives) ---
+    bool isAtEnd() const;
+    char advance();       // Consuma e ritorna char
+    char peek() const;    // Guarda char corrente
+    char peekNext() const;// Guarda char successivo (Lookahead +1)
+    bool match(char expected); // Se il prossimo è 'expected', consumalo
 
-    bool isOperator() const;
-    char currentChar() const;
-    char consumeChar() ;
+    // --- Metodi di Scansione ---
+    void scanToken();     // Switch principale
+    void addToken(TokenType type);
+    void addToken(TokenType type, std::string text);
 
-    void fail(size_t start_pos, size_t end_pos) {
-        Tokens.emplace_back(TypeToken::Unknown, input.substr(start_pos, end_pos - start_pos));
-        currentState = StateToken::Neutral;
-    }
-
-    void fail() {
-        fail(pos, pos + 1);  // Default to current character
-    }
+    // --- Gestori specifici ---
+    void string();
+    void number();        // Gestisce Int, Float, Hex, Bin...
+    void identifier();    // Gestisce ID e Keywords
+    void handleIndent();  // Gestisce la logica INDENT/DEDENT
+    void skipWhitespace();
+    char peekNextNext() const; // Lookahead +2 (utile per casi rari)
 };
 
-#endif // MY_PARSER_LEXER_H
+#endif //WOLF_COMPILER_LEXER_H

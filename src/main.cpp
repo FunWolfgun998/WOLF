@@ -1,69 +1,45 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include "../include/Lexer/Lexer.h"
-#include "Parser/Parser.h"
-#include "../test/ASTPrinter.h"
-
-// Funzione per leggere il contenuto di un file
-std::string readFile(const std::string& filePath) {
-    std::ifstream file(filePath);
-    if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + filePath);
-    }
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
-
-void printWithVisibleTabs(const std::string& str) {
-    for (char c : str) {
-        if (c == '\t') {
-            std::cout << "\\t";  // Stampa \t invece della tabulazione
-        } else {
-            std::cout << c;
-        }
-    }
-}
+#include <vector>
+#include "..\include/Lexer/Lexer.h"
 
 int main(int argc, char* argv[]) {
-    try {
-        // 1. Leggi il file di input
-        std::string filePath = "input.wlf";  // Percorso relativo alla cartella di esecuzione
-        std::string sourceCode = readFile(filePath);
-
-        std::cout << "=== Source Code ===" << std::endl;
-        std::cout << sourceCode << std::endl;
-
-        // 2. Lexing
-        Lexer lexer(sourceCode);
-        auto tokens = lexer.getAllTokens();
-
-        std::cout << "\n=== Tokens ===" << std::endl;
-        for (const auto& token : tokens) {
-            std::cout << "Type: " << static_cast<int>(token.type)
-                      << ", Value: '";
-            printWithVisibleTabs(token.value);
-            std::cout <<"'" << std::endl;;
-        }
-        std::cout << "Done Token"<< std::endl;
-        Parser parser(tokens);
-        parser.parse();
-        // std::cout << "\n=== Abstract Syntax Tree ===" << std::endl;
-        //
-        // // 3. Parsing
-        // Parser parser(tokens);
-        // auto ast = parser.ParseTokens();
-        //
-        // // 4. Stampa l'AST
-        // ASTPrinter printer(std::cout, true); // Pass true to show types
-        // ast->accept(printer);
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+    // 1. Controllo Argomenti
+    if (argc != 2) {
+        std::cerr << "Utilizzo: WOLF_Compiler <file.wlf>" << std::endl;
         return 1;
     }
+
+    std::string filename = argv[1];
+
+    // 2. Controllo estensione (opzionale ma carino)
+    if (filename.size() < 4 || filename.substr(filename.size() - 4) != ".wlf") {
+        std::cerr << "Errore: Il file deve avere estensione .wlf" << std::endl;
+        return 1;
+    }
+
+    // 3. Apertura File
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Errore: Impossibile aprire il file '" << filename << "'" << std::endl;
+        return 1;
+    }
+
+    // 4. Lettura intero buffer in stringa (Opzione C)
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string sourceCode = buffer.str();
+    file.close();
+
+    // Debug: Stampa il codice letto
+    std::cout << "--- LETTURA FILE WOLF ---" << std::endl;
+    std::cout << sourceCode << std::endl;
+    std::cout << "-------------------------" << std::endl;
+
+    // 5. Qui lanceremo il Lexer (Prossimo step)
+    // Lexer lexer(sourceCode);
+    // std::vector<Token> tokens = lexer.tokenize();
 
     return 0;
 }

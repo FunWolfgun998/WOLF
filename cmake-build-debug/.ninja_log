@@ -1,11 +1,11 @@
 # ninja log v6
-273	2236	1755066898125956402	build.ninja	b40d7bf7359bb979
-2	15	1754941405656048015	CMakeFiles/Wolf.dir/src/Parser/Token.cpp.o	cce3dbafcacc107b
-1	14	1754941405655847841	CMakeFiles/Wolf.dir/test/ast_tests.cpp.o	d5a47fbbd9cb0079
-3	14	1754941405657211153	CMakeFiles/Wolf.dir/src/ast/ASTNode.cpp.o	598cc0f8a2969009
-2	15	1754941405656211237	CMakeFiles/Wolf.dir/test/parser_tests.cpp.o	fc39f563b1b0337a
-2	432	1754941405656348779	CMakeFiles/Wolf.dir/src/ast/ASTPrinter.cpp.o	4c9d06c05c35bc47
-2	463	1754946319775825038	CMakeFiles/Wolf.dir/src/main.cpp.o	93edf1fb3684349a
-1	894	1754941405655650998	CMakeFiles/Wolf.dir/src/Parser/Parser.cpp.o	8c6688642c3e6c8d
-4	457	1755063928027388512	CMakeFiles/Wolf.dir/src/Parser/Lexer.cpp.o	8a3948837313df49
+4	434	7923411400482504	build.ninja	162b3de7837f934
 457	534	1755063928480396596	Wolf	106dbc833b9e058e
+44	749	7923392144063056	CMakeFiles/Wolf.dir/src/AST/ASTNode.cpp.obj	52ffba47c8ac9e03
+623	817	7923393662466277	Wolf.exe	18ba4127bb2831ef
+9	1105	7923392143706022	CMakeFiles/Wolf.dir/src/Lexer/Lexer.cpp.obj	a21ce3e5c30b3238
+22	117	7923392143838778	CMakeFiles/Wolf.dir/test/ast_tests.cpp.obj	1be73bf2017fd9db
+4	434	7923411400449584	D:/Progetti/WOLF/cmake-build-debug/cmake_install.cmake	162b3de7837f934
+30	135	7923392143920924	CMakeFiles/Wolf.dir/test/parser_tests.cpp.obj	8879411893054b11
+38	1184	7923392143991954	CMakeFiles/Wolf.dir/src/AST/ASTPrinter.cpp.obj	6243b346ab7c12bc
+15	622	7923393656392676	CMakeFiles/Wolf.dir/src/main.cpp.obj	bf8643cec4cbaa21
