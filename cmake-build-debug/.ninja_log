@@ -9,3 +9,15 @@
 30	135	7923392143920924	CMakeFiles/Wolf.dir/test/parser_tests.cpp.obj	8879411893054b11
 38	1184	7923392143991954	CMakeFiles/Wolf.dir/src/AST/ASTPrinter.cpp.obj	6243b346ab7c12bc
 15	622	7923393656392676	CMakeFiles/Wolf.dir/src/main.cpp.obj	bf8643cec4cbaa21
+173	1819	7923669329975686	CMakeFiles/Wolf.dir/src/Lexer/Token.cpp.obj	f5df292640162acf
+12	1911	7923669328373171	CMakeFiles/Wolf.dir/src/main.cpp.obj	bf8643cec4cbaa21
+14	110	7923669500308976	CMakeFiles/Wolf.dir/src/Lexer/Lexer.cpp.obj	a21ce3e5c30b3238
+111	841	7923669501276106	Wolf.exe	63765f0e398e7576
+11	994	7923673565069522	CMakeFiles/Wolf.dir/src/main.cpp.obj	bf8643cec4cbaa21
+995	1205	7923673574910038	Wolf.exe	63765f0e398e7576
+11	883	7923673648440378	CMakeFiles/Wolf.dir/src/main.cpp.obj	bf8643cec4cbaa21
+883	1095	7923673657153442	Wolf.exe	63765f0e398e7576
+12	989	7923673736107542	CMakeFiles/Wolf.dir/src/main.cpp.obj	bf8643cec4cbaa21
+990	1225	7923673745887136	Wolf.exe	63765f0e398e7576
+57	1335	7925032388282554	CMakeFiles/Wolf.dir/src/main.cpp.obj	bf8643cec4cbaa21
+1337	1646	7925032401079351	Wolf.exe	63765f0e398e7576
