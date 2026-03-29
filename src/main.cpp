@@ -37,9 +37,14 @@ int main(int argc, char* argv[]) {
     std::cout << sourceCode << std::endl;
     std::cout << "-------------------------" << std::endl;
 
-    // 5. Qui lanceremo il Lexer (Prossimo step)
-    // Lexer lexer(sourceCode);
-    // std::vector<Token> tokens = lexer.tokenize();
+    // 5. Avvio Lexer
+    Lexer lexer(sourceCode);
+    std::vector<Token> tokens = lexer.tokenize();
+
+    std::cout << "\n--- TOKEN GENERATI ---\n";
+    for (const auto& token : tokens) {
+        std::cout << token.toString() << "\n";
+    }
 
     return 0;
 }

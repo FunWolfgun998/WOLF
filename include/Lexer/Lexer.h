@@ -1,54 +1,60 @@
-#ifndef WOLF_COMPILER_LEXER_H
-#define WOLF_COMPILER_LEXER_H
+#pragma once
 
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <charconv>
+#include <stack>
 #include "Token.h"
 
 class Lexer {
 public:
-    // Costruttore: prende il codice sorgente intero
     explicit Lexer(std::string source);
-
-    // Metodo principale: genera la lista di tutti i token
     std::vector<Token> tokenize();
 
 private:
     std::string source;
     std::vector<Token> tokens;
 
-    // Cursori per la navigazione
-    size_t start = 0;   // Inizio del token corrente
-    size_t current = 0; // Carattere attuale
+    // Pointers for scanning
+    size_t start = 0;       // Start of the current token being scanned
+    size_t current = 0;     // Current character being inspected
+
+    // Source location tracking
     int line = 1;
     int column = 1;
+    int startColumn = 1;    // Column where the current token starts
 
-    // Gestione Indentazione (Python Style)
-    std::vector<int> indentStack; // Stack dei livelli di indentazione (0, 4, 8...)
+    // State for Python-style indentation
+    std::vector<int> indentStack;
 
-    // Mappa per le Keywords (stringa -> tipo)
-    std::unordered_map<std::string, TokenType> keywords;
+    // String Interning pool for identifiers
+    std::unordered_map<std::string, int> identifierIDs;
+    int nextID = 1;
 
-    // --- Metodi Helper (Primitives) ---
+    // --- Primitive Operations ---
     bool isAtEnd() const;
-    char advance();       // Consuma e ritorna char
-    char peek() const;    // Guarda char corrente
-    char peekNext() const;// Guarda char successivo (Lookahead +1)
-    bool match(char expected); // Se il prossimo è 'expected', consumalo
+    char advance();
+    char peek() const;
+    char peekNext(int n = 1) const;
+    bool match(char expected);
 
-    // --- Metodi di Scansione ---
-    void scanToken();     // Switch principale
-    void addToken(TokenType type);
-    void addToken(TokenType type, std::string text);
-
-    // --- Gestori specifici ---
+    // --- Core Logic ---
+    void scanToken();
     void string();
-    void number();        // Gestisce Int, Float, Hex, Bin...
-    void identifier();    // Gestisce ID e Keywords
-    void handleIndent();  // Gestisce la logica INDENT/DEDENT
-    void skipWhitespace();
-    char peekNextNext() const; // Lookahead +2 (utile per casi rari)
-};
+    void rawString();
+    void formatString();
+    void charLiteral();
+    void number();
+    void identifier();
+    void handleIndentation();
 
-#endif //WOLF_COMPILER_LEXER_H
+    // --- Error Handling ---
+    void manageError(const std::string& message);
+    void recoverFromError();
+
+    // --- Token Emission Helpers ---
+    void addToken(TokenType type);
+    void addIdentifierToken(TokenType type, int id);
+    void addToken(TokenType type, LiteralValue value);
+};

@@ -18,6 +18,8 @@ enum class TokenType {
     OCT_LITERAL,    // 0o77
     CHAR_LITERAL,   // 'c'
     STRING_LITERAL, // "ciao"
+    RAW_STRING_LITERAL, // r""
+    FORMAT_STRING_LITERAL, // f""
 
     // Keywords (Tipi)
     KW_INT, KW_FLOAT, KW_CHAR, KW_STRING, KW_VOID, KW_BOOL,
@@ -29,9 +31,12 @@ enum class TokenType {
     KW_STRUCT, KW_CLASS,
     KW_NULL, KW_TRUE, KW_FALSE,
 
+
     // Operatori Doppi (Priorità Alta)
     OP_SHIFT_LEFT,  // <<
     OP_SHIFT_RIGHT, // >>
+    OP_SHIFT_LEFT_ASS,  // <<=
+    OP_SHIFT_RIGHT_ASS, // >>=
     OP_EQ_EQ,       // ==
     OP_NOT_EQ,      // !=
     OP_LESS_EQ,     // <=
@@ -43,10 +48,15 @@ enum class TokenType {
     OP_MUL_ASS,     // *=
     OP_DIV_ASS,     // /=
     OP_MOD_ASS,     // %=
+    OP_AND_ASS,     // &=
+    OP_OR_ASS,      // |=
+    OP_XOR_ASS,     // ^=
     RANGE_OP,       // ..
     ARROW,          // -> (Opzionale, utile per return type)
 
     // Operatori Singoli
+    OP_BIT_AND,     // &
+    OP_BIT_OR,      // |
     OP_PLUS,        // +
     OP_MINUS,       // -
     OP_STAR,        // *
@@ -57,12 +67,18 @@ enum class TokenType {
     OP_NOT,         // !
     OP_LESS,        // <
     OP_GRT,         // >
+    OP_TILDE,    // ~
+    OP_QUESTION, // ?
+    OP_INC,      // ++
+    OP_DEC,      // --
 
     // Punteggiatura
     DOT,            // .
     COLON,          // :
     L_PAREN,        // (
     R_PAREN,        // )
+    L_BRACKET,      // [
+    R_BRACKET,      // ]
     COMMA,          // ,
 
     // Identificatori

@@ -1,0 +1,33 @@
+// WOLF Error Suite - Testing manageError()
+
+// 1. Test: Unexpected Characters (Symbols not defined in our language)
+@
+$
+?
+
+// 2. Test: Numerical Overflow
+// This number is way too large for a 64-bit long long
+int big_num = 999999999999999999999999999999999999999999999999
+
+// 3. Test: String Errors
+string unclosed = "This string starts but never ends...
+
+// 4. Test: Character Literal Errors
+char empty_char = ''            // Error: Empty
+char invalid_escape = '\q'      // Error: \q is not a valid escape
+char too_long = 'abc'           // Error: Multi-character
+char unclosed_char = 'z         // Error: No closing quote
+
+// 5. Test: Indentation Inconsistency
+if(true):
+    print("Indented to 4 spaces")
+  print("This is indented only to 2 spaces - Should fail!")
+
+// 6. Test: Unterminated Multiline Comment
+/*
+   This is a nested comment level 1
+   /*
+      Level 2
+   */
+   Wait... I forgot to close the first level!
+   The file ends here.
