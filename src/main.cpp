@@ -2,7 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include "../include/lexer/Lexer.h" // Assicurati che il path sia corretto
+#include "../include/Lexer/Lexer.h" // Assicurati che il path sia corretto
 
 int main(int argc, char* argv[]) {
     // 1. Controllo Argomenti

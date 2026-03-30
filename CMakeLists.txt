@@ -12,6 +12,10 @@ add_executable(
         include/Lexer/TokenType.h
         include/Lexer/Token.h
         src/Lexer/Token.cpp
+        include/AST/ASTdec.h
+        include/AST/ASTNodes.h
+        src/Parser/Parser.cpp
+        include/Parser/Parser.h
 )
 
 # Includi i file header

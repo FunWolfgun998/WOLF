@@ -1,4 +1,4 @@
-#include "../../include/lexer/Token.h"
+#include "../../include/Lexer/Token.h"
 
 std::string tokenTypeToString(TokenType type) {
     switch (type) {
@@ -23,7 +23,7 @@ std::string tokenTypeToString(TokenType type) {
         case TokenType::KW_BOOL: return "KW_BOOL";
         case TokenType::KW_IF: return "KW_IF";
         case TokenType::KW_ELSE: return "KW_ELSE";
-        case TokenType::KW_ELIF: return "KW_ELIF";
+        case TokenType::KW_ELIF: return "KW_ELIrF";
         case TokenType::KW_WHILE: return "KW_WHILE";
         case TokenType::KW_FOR: return "KW_FOR";
         case TokenType::KW_IN: return "KW_IN";
