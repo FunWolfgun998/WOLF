@@ -45,9 +45,15 @@ struct BlockStmt {
 };
 
 struct IfStmt {
-    Expr condition;               // Condition to evaluate
-    BlockStmt thenBranch;         // Code to execute if condition is true
-    std::unique_ptr<BlockStmt> elseBranch; // Optional 'else' or 'elif' block
+    Expr condition;
+    BlockStmt thenBranch;
+    std::vector<ElseIfBranch> elifBranches; // vector of elif
+    std::unique_ptr<BlockStmt> elseBranch;  // Possible final else
+};
+
+struct ElseIfBranch {
+    Expr condition;
+    BlockStmt block;
 };
 
 struct WhileStmt {
@@ -59,6 +65,7 @@ struct ReturnStmt {
     Token keyword;               // The 'return' token
     std::unique_ptr<Expr> value; // Optional return value
 };
+
 
 // --- AST FACTORY HELPERS ---
 
