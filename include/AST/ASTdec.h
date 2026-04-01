@@ -15,6 +15,7 @@ struct ExpressionStmt;
 struct VarDeclStmt;
 struct BlockStmt;
 struct IfStmt;
+struct ElseIfBranch;
 struct WhileStmt;
 struct ReturnStmt;
 
@@ -27,7 +28,20 @@ using ExprVariant = std::variant<
     std::unique_ptr<GroupingExpr>
 >;
 
-// Wrapper struct for an expression
+// Wrapper struct for an expression.
+/*
+    Is a Sum Type of all possible type of node.
+    Is like
+    class ExprNode
+    {
+    }
+    class BinaryNode : public BaseNode{
+
+    }
+    Instead of classes we use structs and at the same time allows
+    us to have some nodes to enter different groups of nodes (other than Expr, like Stmt)
+ */
+
 struct Expr {
     ExprVariant as; 
 };
