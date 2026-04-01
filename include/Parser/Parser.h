@@ -67,7 +67,6 @@ private:
     Expr parsePrecedence(Precedence precedence);
     Expr parseExpression();
     // expression methods (Node Builders)
-
     Expr parseLiteral(Token token);
     Expr parseVariable(Token token);
     Expr parseGrouping(Token token);
