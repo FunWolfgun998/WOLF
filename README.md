@@ -1,22 +1,34 @@
 # WOLF - Wildly Original Language Format
-Compiler for my compiled and indented language.
-The idea is to have a compiled and indented base language that combines the efficiency of a compiled program with the beauty of indentation.
+Compiler for my indented based language that combines the efficiency of a compiled program with the beauty of indentation.
 ## Syntax
 ```
-int id = 678
-float f=7.98e67
+int hello(int world):
+    return world * 2
 
-if(true):
+int id = 998
+float f=9.98e9
+
+if id== 998:
     int o
     int i = 89
-elif(id == 678 ): //else + if
+elif id == 89 : //else + if
     string c = "c\n b\n"
     float a = 0
     a -= 78
-    if(67):
-        x = 67
+    
+    if f == 9 :
+        x = 69 // nice
 else:
     float z =9
-    z*=67
+    z*=id
+    
+while id>=45:
+    id--
+    
+for j in 0..10
+    id++;
+
+int y = hello(id)
+
 ```
 Credit for the acronym of the name to Strange_knoll
