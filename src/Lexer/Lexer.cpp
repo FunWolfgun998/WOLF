@@ -288,8 +288,13 @@ void Lexer::handleIndentation() {
     }
 
     // Ignore indentation entirely on blank lines or comment-only lines
-    if (tempCurrent >= source.length() || source[tempCurrent] == '\n') return;
-    if (source[tempCurrent] == '/' && tempCurrent + 1 < source.length() && source[tempCurrent+1] == '/') return;
+    if (tempCurrent >= source.length() || source[tempCurrent] == '\n' || source[tempCurrent] == '\r') {
+        return; // Empty line, ignore
+    }
+    if (source[tempCurrent] == '/' && tempCurrent + 1 < source.length() &&
+       (source[tempCurrent+1] == '/' || source[tempCurrent+1] == '*')) {
+        return; // Comment line, ignore
+       }
 
     // Commit the cursor movement
     column += spaces;

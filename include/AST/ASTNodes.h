@@ -60,12 +60,57 @@ struct WhileStmt {
     Expr condition;
     BlockStmt body;
 };
-
+// return "Hello XD"
 struct ReturnStmt {
     Token keyword;               // The 'return' token
     std::unique_ptr<Expr> value; // Optional return value
 };
 
+// functionCall(arg1, arg2)
+struct CallExpr {
+    Expr callee; // L'espressione da chiamare (spesso un VariableExpr)
+    Token paren; // Il token '(' per il debug/errori
+    std::vector<Expr> arguments;
+};
+
+// object.field
+struct MemberAccessExpr {
+    Expr object;
+    Token name; // Il nome del campo o metodo
+};
+
+// array[index]
+struct ArrayAccessExpr {
+    Expr array;
+    Expr index;
+};
+
+// for x in start..end:
+struct ForStmt {
+    Token iteratorVar; // variable 'x'
+    Expr startRange;   // start (es. 0)
+    Expr endRange;     // end (es. 10)
+    BlockStmt body;
+};
+
+// int myFunc(int a, float b):
+struct Parameter {
+    Token type;
+    Token name;
+};
+
+struct FunctionDeclStmt {
+    Token returnType;
+    Token name;
+    std::vector<Parameter> parameters;
+    BlockStmt body;
+};
+
+// struct Point:
+struct StructDeclStmt {
+    Token name;
+    std::vector<VarDeclStmt> fields; // I campi della struct (trattati come dichiarazioni di variabili)
+};
 
 // --- AST FACTORY HELPERS ---
 

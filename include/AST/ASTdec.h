@@ -10,6 +10,9 @@ struct VariableExpr;
 struct BinaryExpr;
 struct UnaryExpr;
 struct GroupingExpr;
+struct CallExpr;
+struct MemberAccessExpr;
+struct ArrayAccessExpr;
 
 struct ExpressionStmt;
 struct VarDeclStmt;
@@ -17,7 +20,11 @@ struct BlockStmt;
 struct IfStmt;
 struct ElseIfBranch;
 struct WhileStmt;
+struct ForStmt;
+struct FunctionDeclStmt;
+struct StructDeclStmt;
 struct ReturnStmt;
+
 
 // Variant containing all possible expression types
 using ExprVariant = std::variant<
@@ -25,7 +32,10 @@ using ExprVariant = std::variant<
     std::unique_ptr<VariableExpr>,
     std::unique_ptr<BinaryExpr>,
     std::unique_ptr<UnaryExpr>,
-    std::unique_ptr<GroupingExpr>
+    std::unique_ptr<GroupingExpr>,
+    std::unique_ptr<CallExpr>,
+    std::unique_ptr<MemberAccessExpr>,
+    std::unique_ptr<ArrayAccessExpr>
 >;
 
 // Wrapper struct for an expression.
@@ -53,7 +63,10 @@ using StmtVariant = std::variant<
     std::unique_ptr<BlockStmt>,
     std::unique_ptr<IfStmt>,
     std::unique_ptr<WhileStmt>,
-    std::unique_ptr<ReturnStmt>
+    std::unique_ptr<ReturnStmt>,
+    std::unique_ptr<ForStmt>,
+    std::unique_ptr<FunctionDeclStmt>,
+    std::unique_ptr<StructDeclStmt>
 >;
 
 // Wrapper struct for a statement

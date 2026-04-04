@@ -42,6 +42,8 @@ private:
     // --- Navigation Helpers ---
     //Rispettando alla lettera la regola: non si guarda mai indietro cattureremo il token mentre lo consumiamo con advance()..
     Token peek() const;
+    Token peeknNext(int n) const;
+
     Token advance();
     bool isAtEnd() const;
     bool check(TokenType type) const;
@@ -57,6 +59,12 @@ private:
     Stmt parseVarDecl();
     Stmt parseIfStmt();
     Stmt parseWhileStmt();
+    Stmt parseForStmt();
+
+    Stmt parseFunctionDecl(Token returnType);
+
+    Stmt parseFunctionDecl();
+    Stmt parseStructDecl();
     Stmt parseReturnStmt();
     BlockStmt parseBlock(); //Handel Indent and Dedent
 
@@ -73,6 +81,9 @@ private:
     Expr parseGrouping(Token token);
     Expr parseUnary(Token token);
     Expr parseBinary(Expr left, Token opToken);
+    Expr parseCall(Expr left, Token parenToken);
+    Expr parseMemberAccess(Expr left, Token dotToken);
+    Expr parseArrayAccess(Expr left, Token bracketToken);
 
     // --- LOOKUP TABLES (Function Pointers) ---
 
