@@ -19,4 +19,6 @@ add_executable(
 )
 
 # Includi i file header
+include_directories(${CMAKE_SOURCE_DIR}/include)
 target_include_directories(Wolf PRIVATE include)
+
