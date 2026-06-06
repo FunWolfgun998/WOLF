@@ -41,7 +41,8 @@ Stmt Parser::parseStatement() {
     if (match(TokenType::KW_WHILE)) return parseWhileStmt();
     if (match(TokenType::KW_FOR)) return parseForStmt();
     if (match(TokenType::KW_STRUCT)) return parseStructDecl();
-    // Fallback: Expression Statement (e.g., "x = 5" or "functionCall()")
+    if (match(TokenType::KW_RETURN)) return parseReturnStmt();
+    // Fallback: Expression Statement (e.g., "x = 5" or "functionCa ll()")
     Expr expr = parseExpression();
 
     // In WOLF, standalone expressions must end with a newline
@@ -182,7 +183,19 @@ Stmt Parser::parseStructDecl() {
 
     return makeStmt<StructDeclStmt>(nameToken, std::move(fields));
 }
+Stmt Parser::parseReturnStmt() {
+    std::unique_ptr<Expr> value = nullptr;
 
+    //If there is an expression to be returned we parse the expression and we save it as value
+    if (!check(TokenType::NEWLINE)) {
+        value = std::make_unique<Expr>(parseExpression());
+    }
+
+    // Expect newline after expression
+    consume(TokenType::NEWLINE, "Expected newline after return statement.");
+
+    return makeStmt<ReturnStmt>(std::move(value));
+}
 Stmt Parser::parseFunctionDecl() {
     Token returnType = advance();
     Token nameToken = consume(TokenType::IDENTIFIER, "Expected function name.");
@@ -228,9 +241,19 @@ BlockStmt Parser::parseBlock() {
 }
 // Navigation Helpers
 Token Parser::peek() const {
+    if (current >= tokens.size()) {
+        return tokens.back();
+    }
     return tokens[current];
 }
 Token Parser::peeknNext(int n = 1) const {
+    if (current <= -n && n<=0) {
+        //if we want to see in the back using negative numbers we check that we aren't too back to have a negative number
+        return tokens.front();
+    }
+    if (current + n >= tokens.size()) {
+        return tokens.back();
+    }
     return tokens[n + current];
 }
 

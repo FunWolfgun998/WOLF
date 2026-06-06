@@ -62,7 +62,6 @@ struct WhileStmt {
 };
 // return "Hello XD"
 struct ReturnStmt {
-    Token keyword;               // The 'return' token
     std::unique_ptr<Expr> value; // Optional return value
 };
 
