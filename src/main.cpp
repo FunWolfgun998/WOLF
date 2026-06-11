@@ -3,6 +3,8 @@
 #include <sstream>
 #include <vector>
 #include "../include/Lexer/Lexer.h" // Assicurati che il path sia corretto
+#include "../include/Parser/Parser.h"
+#include "../include/Utils/ASTPrinter.h"
 
 int main(int argc, char* argv[]) {
     // 1. Controllo Argomenti
@@ -45,6 +47,15 @@ int main(int argc, char* argv[]) {
     for (const auto& token : tokens) {
         std::cout << token.toString() << "\n";
     }
+    Parser parser(tokens);
+    try {
+        std::vector<Stmt> ast = parser.parse();
 
+        std::cout << "\n--- ABSTRACT SYNTAX TREE ---\n";
+        ASTPrinter printer(std::cout);
+        printer.printAST(ast); // Use the entry point we created
+    } catch (const std::exception& e) {
+        std::cerr << "Compilation failed due to errors.\n";
+    }
     return 0;
 }

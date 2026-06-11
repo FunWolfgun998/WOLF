@@ -24,6 +24,7 @@ struct ForStmt;
 struct FunctionDeclStmt;
 struct StructDeclStmt;
 struct ReturnStmt;
+struct TernaryExpr;
 
 
 // Variant containing all possible expression types
@@ -35,7 +36,8 @@ using ExprVariant = std::variant<
     std::unique_ptr<GroupingExpr>,
     std::unique_ptr<CallExpr>,
     std::unique_ptr<MemberAccessExpr>,
-    std::unique_ptr<ArrayAccessExpr>
+    std::unique_ptr<ArrayAccessExpr>,
+    std::unique_ptr<TernaryExpr>
 >;
 
 // Wrapper struct for an expression.

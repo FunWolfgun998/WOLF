@@ -73,6 +73,8 @@ private:
 
     // Parses an expression stopping when it hits an operator with lower precedence
     Expr parsePrecedence(Precedence precedence);
+    Expr parsePostfix(Expr left, Token opToken);
+    Expr parseTernary(Expr left, Token opToken);
     Expr parseExpression();
     // expression methods (Node Builders)
 

@@ -75,12 +75,12 @@ Stmt Parser::parseVarDecl() {
 
 Stmt Parser::parseIfStmt() {
     // We already consumed 'if'
-
     Expr condition = parseExpression();
     consume(TokenType::COLON, "Expected ':' after if condition.");
     consume(TokenType::NEWLINE, "Expected newline after ':'.");
 
-    BlockStmt thenBranch = parseBlock();
+    // Wrap the BlockStmt into a Stmt
+    Stmt thenBranch = makeStmt<BlockStmt>(parseBlock());
 
     // Handle multiple 'elif' branches iteratively
     std::vector<ElseIfBranch> elifBranches;
@@ -89,16 +89,17 @@ Stmt Parser::parseIfStmt() {
         consume(TokenType::COLON, "Expected ':' after elif condition.");
         consume(TokenType::NEWLINE, "Expected newline after ':'.");
 
-        BlockStmt block = parseBlock();
-        elifBranches.push_back({std::move(cond), std::move(block)});
+        // Wrap the Elif block
+        elifBranches.push_back({std::move(cond), makeStmt<BlockStmt>(parseBlock())});
     }
 
     // Handle 'else' branch
-    std::unique_ptr<BlockStmt> elseBranch = nullptr;
+    std::unique_ptr<Stmt> elseBranch = nullptr;
     if (match(TokenType::KW_ELSE)) {
         consume(TokenType::COLON, "Expected ':' after 'else'.");
         consume(TokenType::NEWLINE, "Expected newline after ':'.");
-        elseBranch = std::make_unique<BlockStmt>(parseBlock());
+        // Wrap and put into unique_ptr
+        elseBranch = std::make_unique<Stmt>(makeStmt<BlockStmt>(parseBlock()));
     }
 
     return makeStmt<IfStmt>(std::move(condition), std::move(thenBranch),
@@ -107,19 +108,18 @@ Stmt Parser::parseIfStmt() {
 
 Stmt Parser::parseWhileStmt() {
     // We already consumed 'while'
-
     Expr condition = parseExpression();
     consume(TokenType::COLON, "Expected ':' after while condition.");
     consume(TokenType::NEWLINE, "Expected newline after ':'.");
 
-    BlockStmt body = parseBlock();
+    // Wrap the body
+    Stmt body = makeStmt<BlockStmt>(parseBlock());
 
     return makeStmt<WhileStmt>(std::move(condition), std::move(body));
 }
 
 Stmt Parser::parseForStmt() {
     // We already consumed 'for'
-
     Token iteratorVar = consume(TokenType::IDENTIFIER, "Expected variable name after 'for'.");
     consume(TokenType::KW_IN, "Expected 'in' after iterator variable.");
 
@@ -130,7 +130,7 @@ Stmt Parser::parseForStmt() {
     consume(TokenType::COLON, "Expected ':' after for range.");
     consume(TokenType::NEWLINE, "Expected newline after ':'.");
 
-    BlockStmt body = parseBlock();
+    Stmt body = makeStmt<BlockStmt>(parseBlock());
 
     return makeStmt<ForStmt>(iteratorVar, std::move(startRange), std::move(endRange), std::move(body));
 }
@@ -146,7 +146,7 @@ Stmt Parser::parseStructDecl() {
 
     // A struct only contains VarDecls, not any Stmt.
     // So we parse the block manually, enforcing the rules.
-    std::vector<VarDeclStmt> fields;
+    std::vector<Stmt> fields;
 
     consume(TokenType::INDENT, "Expected indented block for struct fields.");
 
@@ -165,10 +165,7 @@ Stmt Parser::parseStructDecl() {
             // Safely extract the VarDeclStmt from the variant
             auto* varDeclPtr = std::get_if<std::unique_ptr<VarDeclStmt>>(&declStmt.as);
             if (varDeclPtr) {
-                // Move the unique_ptr content into our vector.
-                // Note: we move the value pointed to (*get()), not the pointer itself,
-                // because our AST stores them as values in the vector.
-                fields.push_back(std::move(**varDeclPtr));
+                fields.push_back(parseVarDecl());
             } else {
                 error(peek(), "Critical parser error: expected VarDeclStmt.");
                 throw ParseError();
@@ -178,7 +175,6 @@ Stmt Parser::parseStructDecl() {
             throw ParseError();
         }
     }
-
     consume(TokenType::DEDENT, "Expected dedent at the end of struct block.");
 
     return makeStmt<StructDeclStmt>(nameToken, std::move(fields));
@@ -203,9 +199,10 @@ Stmt Parser::parseFunctionDecl() {
     consume(TokenType::L_PAREN, "Expected '(' after function name.");
 
     std::vector<Parameter> parameters;
-    if (!check(TokenType::R_PAREN)) { // Se ci sono parametri
+    // If there are parameters
+    if (!check(TokenType::R_PAREN)) {
         do {
-            Token paramType = advance(); // Dovremmo controllare che sia un tipo valido
+            Token paramType = advance(); // We should check if the type is valid but that happened on the
             Token paramName = consume(TokenType::IDENTIFIER, "Expected parameter name.");
             parameters.push_back(Parameter{paramType, paramName});
         } while (match(TokenType::COMMA));
@@ -215,8 +212,7 @@ Stmt Parser::parseFunctionDecl() {
     consume(TokenType::COLON, "Expected ':' before function body.");
     consume(TokenType::NEWLINE, "Expected newline.");
 
-    BlockStmt body = parseBlock();
-
+    Stmt body = makeStmt<BlockStmt>(parseBlock());
     return makeStmt<FunctionDeclStmt>(returnType, nameToken, std::move(parameters), std::move(body));
 }
 
@@ -369,9 +365,15 @@ Expr Parser::parsePrecedence(Precedence precedence) {
     return left;
 }
 
-// ============================================================================
+Expr Parser::parsePostfix(Expr left, Token opToken) {
+    // Postfix operators only act on the left operand.
+    // There is no right operand to parse, so we just return the AST node.
+    // Note: You can reuse UnaryExpr, but you might want to add a boolean
+    // flag to UnaryExpr in ASTNodes.h to distinguish prefix from postfix during semantic analysis!
+    return makeExpr<UnaryExpr>(opToken, std::move(left));
+}
+
 // EXPRESSION PARSERS (Node Builders)
-// ============================================================================
 
 Expr Parser::parseLiteral(Token token) {
     // Token holds INT, FLOAT, STRING, CHAR, TRUE, FALSE or NULL
@@ -391,6 +393,21 @@ Expr Parser::parseGrouping(Token token) {
     consume(TokenType::R_PAREN, "Expected ')' after expression.");
 
     return makeExpr<GroupingExpr>(std::move(expr));
+}
+
+Expr Parser::parseTernary(Expr left, Token opToken) {
+    // 'left' is the condition already parsed before the '?' token.
+
+    // Parse the middle expression (true branch)
+    Expr trueBranch = parseExpression();
+
+    consume(TokenType::COLON, "Expected ':' after true branch of ternary operator.");
+
+    // Parse the right expression (false branch)
+    // We use ASSIGNMENT precedence to allow chained ternary operators
+    Expr falseBranch = parsePrecedence(Precedence::ASSIGNMENT);
+
+    return makeExpr<TernaryExpr>(std::move(left), std::move(trueBranch), std::move(falseBranch));
 }
 
 Expr Parser::parseUnary(Token token) {
@@ -458,6 +475,9 @@ Precedence Parser::getPrecedence(TokenType type) const {
         case TokenType::OP_MOD: case TokenType::OP_BIT_AND:
         case TokenType::OP_SHIFT_LEFT: case TokenType::OP_SHIFT_RIGHT: return Precedence::FACTOR;
         case TokenType::DOT: case TokenType::L_PAREN: case TokenType::L_BRACKET: return Precedence::CALL;
+        case TokenType::OP_INC:
+        case TokenType::OP_DEC:
+            return Precedence::CALL;
         default: return Precedence::NONE;
     }
 }
@@ -467,6 +487,8 @@ Parser::NudHandlerMethod Parser::getNudHandler(TokenType type) const {
         case TokenType::INT_LITERAL:
         case TokenType::FLOAT_LITERAL:
         case TokenType::STRING_LITERAL:
+        case TokenType::RAW_STRING_LITERAL:
+        case TokenType::FORMAT_STRING_LITERAL:
         case TokenType::KW_TRUE:
         case TokenType::KW_FALSE:
         case TokenType::KW_NULL: return &Parser::parseLiteral;
@@ -475,6 +497,7 @@ Parser::NudHandlerMethod Parser::getNudHandler(TokenType type) const {
         case TokenType::OP_MINUS: case TokenType::OP_PLUS:
         case TokenType::OP_NOT: case TokenType::OP_TILDE:
         case TokenType::OP_INC: case TokenType::OP_DEC: return &Parser::parseUnary;
+
         default: return nullptr;
     }
 }
@@ -497,8 +520,10 @@ Parser::LedHandlerMethod Parser::getLedHandler(TokenType type) const {
         case TokenType::OP_OR_ASS: case TokenType::OP_XOR_ASS:
         case TokenType::OP_SHIFT_LEFT_ASS: case TokenType::OP_SHIFT_RIGHT_ASS:
             return &Parser::parseBinary;
+        case TokenType::OP_INC:
+        case TokenType::OP_DEC:
+            return &Parser::parsePostfix;
         case TokenType::L_PAREN: return &Parser::parseCall;
-
         case TokenType::L_BRACKET: return &Parser::parseArrayAccess;
         case TokenType::DOT: return &Parser::parseMemberAccess;
         default: return nullptr;

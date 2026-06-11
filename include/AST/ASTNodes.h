@@ -24,14 +24,16 @@ struct UnaryExpr {
     Expr right;  // The operand expression
 };
 
+// Expression inside parentheses: ( 1 + 2 )
 struct GroupingExpr {
-    Expr expression; // Expression inside parentheses: ( 1 + 2 )
+    Expr expression;
 };
 
 // --- STATEMENT NODES ---
 
+// An expression used as a standalone statement
 struct ExpressionStmt {
-    Expr expression; // An expression used as a standalone statement
+    Expr expression;
 };
 
 struct VarDeclStmt {
@@ -46,19 +48,19 @@ struct BlockStmt {
 
 struct IfStmt {
     Expr condition;
-    BlockStmt thenBranch;
+    Stmt thenBranch;
     std::vector<ElseIfBranch> elifBranches; // vector of elif
-    std::unique_ptr<BlockStmt> elseBranch;  // Possible final else
+    std::unique_ptr<Stmt> elseBranch; // Possible final else
 };
 
 struct ElseIfBranch {
     Expr condition;
-    BlockStmt block;
+    Stmt block;
 };
 
 struct WhileStmt {
     Expr condition;
-    BlockStmt body;
+    Stmt body;
 };
 // return "Hello XD"
 struct ReturnStmt {
@@ -89,7 +91,7 @@ struct ForStmt {
     Token iteratorVar; // variable 'x'
     Expr startRange;   // start (es. 0)
     Expr endRange;     // end (es. 10)
-    BlockStmt body;
+    Stmt body;
 };
 
 // int myFunc(int a, float b):
@@ -98,17 +100,23 @@ struct Parameter {
     Token name;
 };
 
+struct TernaryExpr {
+    Expr condition;
+    Expr trueBranch;
+    Expr falseBranch;
+};
+
 struct FunctionDeclStmt {
     Token returnType;
     Token name;
     std::vector<Parameter> parameters;
-    BlockStmt body;
+    Stmt body;
 };
 
 // struct Point:
 struct StructDeclStmt {
     Token name;
-    std::vector<VarDeclStmt> fields; // I campi della struct (trattati come dichiarazioni di variabili)
+    std::vector<Stmt> fields;
 };
 
 // --- AST FACTORY HELPERS ---

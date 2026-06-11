@@ -16,6 +16,8 @@ add_executable(
         include/AST/ASTNodes.h
         src/Parser/Parser.cpp
         include/Parser/Parser.h
+        src/Utils/ASTPrinter.cpp
+        include/Utils/ASTPrinter.h
 )
 
 # Includi i file header
