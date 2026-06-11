@@ -46,6 +46,7 @@ private:
 
     Token advance();
     bool isAtEnd() const;
+    bool isTypeToken(TokenType type) const;
     bool check(TokenType type) const;
     bool match(TokenType type);
     Token consume(TokenType type, const std::string& message);
@@ -74,7 +75,7 @@ private:
     // Parses an expression stopping when it hits an operator with lower precedence
     Expr parsePrecedence(Precedence precedence);
     Expr parsePostfix(Expr left, Token opToken);
-    Expr parseTernary(Expr left, Token opToken);
+    Expr parseTernary(Expr left);
     Expr parseExpression();
     // expression methods (Node Builders)
 
@@ -83,9 +84,10 @@ private:
     Expr parseGrouping(Token token);
     Expr parseUnary(Token token);
     Expr parseBinary(Expr left, Token opToken);
-    Expr parseCall(Expr left, Token parenToken);
-    Expr parseMemberAccess(Expr left, Token dotToken);
-    Expr parseArrayAccess(Expr left, Token bracketToken);
+    Expr parseCall(Expr callee);
+    Expr parseMemberAccess(Expr accessed);
+    Expr parseArrayAccess(Expr indexed);
+    Expr parseArrayLiteral();
 
     // --- LOOKUP TABLES (Function Pointers) ---
 

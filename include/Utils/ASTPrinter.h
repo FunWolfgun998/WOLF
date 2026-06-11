@@ -58,6 +58,7 @@ public:
     void operator()(const std::unique_ptr<CallExpr>& node);
     void operator()(const std::unique_ptr<MemberAccessExpr>& node);
     void operator()(const std::unique_ptr<ArrayAccessExpr>& node);
+    void operator()(const std::unique_ptr<ArrayLiteralExpr>& node);
     void operator()(const std::unique_ptr<TernaryExpr>& node);
 
     // -- Statements (from StmtVariant) --

@@ -20,12 +20,14 @@ struct BinaryExpr {
 };
 
 struct UnaryExpr {
-    Token op;    // Operator (-, !, ~, ++, --)
-    Expr right;  // The operand expression
+    Token op;       // Operator (-, !, ~, ++, --)
+    Expr right;     // The operand expression
+    bool isPostfix; // Needed to differentiate ++x from x++
 };
 
 // Expression inside parentheses: ( 1 + 2 )
 struct GroupingExpr {
+    Token openingParen; // The '(' token for debug/error tracking
     Expr expression;
 };
 
@@ -37,8 +39,8 @@ struct ExpressionStmt {
 };
 
 struct VarDeclStmt {
-    Token type;         // Variable type (e.g., KW_INT)
-    Token name;         // Variable identifier
+    Token type;                        // Variable type (e.g., KW_INT)
+    Token name;                        // Variable identifier
     std::unique_ptr<Expr> initializer; // Optional initial value
 };
 
@@ -47,61 +49,83 @@ struct BlockStmt {
 };
 
 struct IfStmt {
+    Token keyword;                          // The 'if' token
     Expr condition;
-    Stmt thenBranch;
-    std::vector<ElseIfBranch> elifBranches; // vector of elif
-    std::unique_ptr<Stmt> elseBranch; // Possible final else
+    Stmt thenBranch;                        // Body of the 'if'
+    std::vector<ElseIfBranch> elifBranches; // Vector of elif branches
+    std::unique_ptr<Stmt> elseBranch;       // Possible final 'else' branch (optional)
 };
 
 struct ElseIfBranch {
+    Token keyword; // The 'elif' token
     Expr condition;
-    Stmt block;
+    Stmt block;    // Body of the 'elif'
 };
 
 struct WhileStmt {
+    Token keyword;  // The 'while' token
     Expr condition;
-    Stmt body;
+    Stmt body;      // Body of the loop
 };
+
 // return "Hello XD"
 struct ReturnStmt {
+    Token keyword;               // The 'return' token
     std::unique_ptr<Expr> value; // Optional return value
+};
+
+// struct Point:
+struct StructDeclStmt {
+    Token name;
+    std::vector<Stmt> fields; // Fields of the struct (must be VarDeclStmt)
 };
 
 // functionCall(arg1, arg2)
 struct CallExpr {
-    Expr callee; // L'espressione da chiamare (spesso un VariableExpr)
-    Token paren; // Il token '(' per il debug/errori
-    std::vector<Expr> arguments;
+    Expr callee;                 // Expression being called (often a VariableExpr)
+    Token paren;                 // The '(' token for debug/error tracking
+    std::vector<Expr> arguments; // List of arguments passed
 };
 
-// object.field
+// accessed.member
 struct MemberAccessExpr {
-    Expr object;
-    Token name; // Il nome del campo o metodo
+    Expr accessed;
+    Token dot;     // The '.' token for error tracking
+    Token member;  // The identifier (field or method name)
 };
 
 // array[index]
 struct ArrayAccessExpr {
     Expr array;
+    Token openingBracket; // The '[' token for error tracking
     Expr index;
+};
+
+// [1, 2, 4]
+struct ArrayLiteralExpr {
+    Token openingBracket;      // The '[' token
+    std::vector<Expr> elements; // Elements of the array
 };
 
 // for x in start..end:
 struct ForStmt {
-    Token iteratorVar; // variable 'x'
-    Expr startRange;   // start (es. 0)
-    Expr endRange;     // end (es. 10)
-    Stmt body;
+    Token keyword;     // CORRETTO: era 'keywork'
+    Token iteratorVar; // Variable 'x'
+    Expr startRange;   // Start of range (e.g. 0)
+    Expr endRange;     // End of range (e.g. 10)
+    Stmt body;         // Body of the loop
 };
 
 // int myFunc(int a, float b):
 struct Parameter {
     Token type;
     Token name;
+    std::unique_ptr<Expr> defaultValue; // Optional default value (e.g. int a = 998)
 };
 
 struct TernaryExpr {
     Expr condition;
+    Token questionMark; // The '?' token for error tracking
     Expr trueBranch;
     Expr falseBranch;
 };
@@ -110,14 +134,9 @@ struct FunctionDeclStmt {
     Token returnType;
     Token name;
     std::vector<Parameter> parameters;
-    Stmt body;
+    Stmt body; // Body of the function
 };
 
-// struct Point:
-struct StructDeclStmt {
-    Token name;
-    std::vector<Stmt> fields;
-};
 
 // --- AST FACTORY HELPERS ---
 

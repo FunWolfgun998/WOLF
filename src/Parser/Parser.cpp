@@ -37,12 +37,12 @@ Stmt Parser::parseStatement() {
         }
 
     // 2. Control Flow
-    if (match(TokenType::KW_IF)) return parseIfStmt();
-    if (match(TokenType::KW_WHILE)) return parseWhileStmt();
-    if (match(TokenType::KW_FOR)) return parseForStmt();
-    if (match(TokenType::KW_STRUCT)) return parseStructDecl();
-    if (match(TokenType::KW_RETURN)) return parseReturnStmt();
-    // Fallback: Expression Statement (e.g., "x = 5" or "functionCa ll()")
+    if (check(TokenType::KW_IF)) return parseIfStmt();
+    if (check(TokenType::KW_WHILE)) return parseWhileStmt();
+    if (check(TokenType::KW_FOR)) return parseForStmt();
+    if (check(TokenType::KW_STRUCT)) return parseStructDecl();
+    if (check(TokenType::KW_RETURN)) return parseReturnStmt();
+    // Fallback: Expression Statement (e.g., "x = 5" or "functionCall()")
     Expr expr = parseExpression();
 
     // In WOLF, standalone expressions must end with a newline
@@ -54,11 +54,17 @@ Stmt Parser::parseStatement() {
 // --- Specific Statement Builders ---
 
 Stmt Parser::parseVarDecl() {
+
     // Consume the type token internally
+    if (!isTypeToken(peek().type)) {
+        error(peek(), "Expected type name for Variable declaration parsing.");
+        throw ParseError();
+    }
+
     Token typeVar = advance();
 
     // Consume the identifier
-    Token nameToken = consume(TokenType::IDENTIFIER, "Expected variable name.");
+    Token nameVariable = consume(TokenType::IDENTIFIER, "Expected variable name.");
 
     std::unique_ptr<Expr> initializer = nullptr;
 
@@ -70,11 +76,12 @@ Stmt Parser::parseVarDecl() {
     // Statement terminator
     consume(TokenType::NEWLINE, "Expected newline after variable declaration.");
 
-    return makeStmt<VarDeclStmt>(typeVar, nameToken, std::move(initializer));
+    return makeStmt<VarDeclStmt>(typeVar, nameVariable, std::move(initializer));
 }
 
 Stmt Parser::parseIfStmt() {
-    // We already consumed 'if'
+    Token keyword= consume(TokenType::KW_IF, "Expected 'if' for if parsing");
+
     Expr condition = parseExpression();
     consume(TokenType::COLON, "Expected ':' after if condition.");
     consume(TokenType::NEWLINE, "Expected newline after ':'.");
@@ -84,13 +91,14 @@ Stmt Parser::parseIfStmt() {
 
     // Handle multiple 'elif' branches iteratively
     std::vector<ElseIfBranch> elifBranches;
-    while (match(TokenType::KW_ELIF)) {
+    while (check(TokenType::KW_ELIF)) {
+        Token elifKeyword = advance();
         Expr cond = parseExpression();
         consume(TokenType::COLON, "Expected ':' after elif condition.");
         consume(TokenType::NEWLINE, "Expected newline after ':'.");
 
         // Wrap the Elif block
-        elifBranches.push_back({std::move(cond), makeStmt<BlockStmt>(parseBlock())});
+        elifBranches.push_back({elifKeyword, std::move(cond), makeStmt<BlockStmt>(parseBlock())});
     }
 
     // Handle 'else' branch
@@ -102,12 +110,12 @@ Stmt Parser::parseIfStmt() {
         elseBranch = std::make_unique<Stmt>(makeStmt<BlockStmt>(parseBlock()));
     }
 
-    return makeStmt<IfStmt>(std::move(condition), std::move(thenBranch),
+    return makeStmt<IfStmt>(keyword,std::move(condition), std::move(thenBranch),
                             std::move(elifBranches), std::move(elseBranch));
 }
 
 Stmt Parser::parseWhileStmt() {
-    // We already consumed 'while'
+    Token keyword=  consume(TokenType::KW_WHILE, "Expected 'while' for while parsing");
     Expr condition = parseExpression();
     consume(TokenType::COLON, "Expected ':' after while condition.");
     consume(TokenType::NEWLINE, "Expected newline after ':'.");
@@ -115,11 +123,12 @@ Stmt Parser::parseWhileStmt() {
     // Wrap the body
     Stmt body = makeStmt<BlockStmt>(parseBlock());
 
-    return makeStmt<WhileStmt>(std::move(condition), std::move(body));
+    return makeStmt<WhileStmt>(keyword, std::move(condition), std::move(body));
 }
 
 Stmt Parser::parseForStmt() {
-    // We already consumed 'for'
+    Token keyword=  consume(TokenType::KW_FOR, "Expected 'for' in For parsing");
+
     Token iteratorVar = consume(TokenType::IDENTIFIER, "Expected variable name after 'for'.");
     consume(TokenType::KW_IN, "Expected 'in' after iterator variable.");
 
@@ -128,24 +137,21 @@ Stmt Parser::parseForStmt() {
     Expr endRange = parseExpression();
 
     consume(TokenType::COLON, "Expected ':' after for range.");
+
     consume(TokenType::NEWLINE, "Expected newline after ':'.");
 
     Stmt body = makeStmt<BlockStmt>(parseBlock());
 
-    return makeStmt<ForStmt>(iteratorVar, std::move(startRange), std::move(endRange), std::move(body));
+    return makeStmt<ForStmt>(keyword, iteratorVar, std::move(startRange), std::move(endRange), std::move(body));
 }
 Stmt Parser::parseStructDecl() {
-    //We already consumed 'struct'
 
-    // Consume the struct name
+    Token keyword = consume(TokenType::KW_STRUCT, "Expected 'struct' for struct parsing.");
     Token nameToken = consume(TokenType::IDENTIFIER, "Expected struct name.");
 
-    // Consume the colon and newline
     consume(TokenType::COLON, "Expected ':' after struct name.");
     consume(TokenType::NEWLINE, "Expected newline after ':'.");
 
-    // A struct only contains VarDecls, not any Stmt.
-    // So we parse the block manually, enforcing the rules.
     std::vector<Stmt> fields;
 
     consume(TokenType::INDENT, "Expected indented block for struct fields.");
@@ -153,48 +159,45 @@ Stmt Parser::parseStructDecl() {
     while (!check(TokenType::DEDENT) && !isAtEnd()) {
         if (match(TokenType::NEWLINE)) continue;
 
-        // Fields must start with a type keyword
-        if (check(TokenType::KW_INT) || check(TokenType::KW_FLOAT) ||
-            check(TokenType::KW_CHAR) || check(TokenType::KW_STRING) ||
-            check(TokenType::KW_BOOL)) {
+        // 2. THE FIX: A field can start with a Type Keyword OR an Identifier (User-defined type)
+        if (isTypeToken(peek().type)) {
 
-            // Re-use VarDecl logic, but extract the raw struct since
-            // parseVarDecl returns a generic Stmt wrapper.
+            // Parse the declaration once
             Stmt declStmt = parseVarDecl();
 
-            // Safely extract the VarDeclStmt from the variant
-            auto* varDeclPtr = std::get_if<std::unique_ptr<VarDeclStmt>>(&declStmt.as);
-            if (varDeclPtr) {
-                fields.push_back(parseVarDecl());
-            } else {
-                error(peek(), "Critical parser error: expected VarDeclStmt.");
-                throw ParseError();
-            }
+            // 3. Move the parsed statement into the vector
+            // We use std::move because declStmt contains a unique_ptr
+            fields.push_back(std::move(declStmt));
+
         } else {
             error(peek(), "Structs can only contain variable declarations.");
             throw ParseError();
         }
     }
+
     consume(TokenType::DEDENT, "Expected dedent at the end of struct block.");
 
+    // Return the completed struct declaration
     return makeStmt<StructDeclStmt>(nameToken, std::move(fields));
 }
 Stmt Parser::parseReturnStmt() {
-    std::unique_ptr<Expr> value = nullptr;
+    // return "Hello XD" + variableWithALongName
+    Token keyword=  consume(TokenType::KW_RETURN, "Expected 'return' for return parsing");
 
-    //If there is an expression to be returned we parse the expression and we save it as value
+    // "Hello XD" + variableWithALongName
+    std::unique_ptr<Expr> returnedValue = nullptr;
     if (!check(TokenType::NEWLINE)) {
-        value = std::make_unique<Expr>(parseExpression());
+        returnedValue = std::make_unique<Expr>(parseExpression());
     }
 
     // Expect newline after expression
     consume(TokenType::NEWLINE, "Expected newline after return statement.");
 
-    return makeStmt<ReturnStmt>(std::move(value));
+    return makeStmt<ReturnStmt>(keyword, std::move(returnedValue));
 }
 Stmt Parser::parseFunctionDecl() {
     Token returnType = advance();
-    Token nameToken = consume(TokenType::IDENTIFIER, "Expected function name.");
+    Token nameFunction = consume(TokenType::IDENTIFIER, "Expected function name.");
 
     consume(TokenType::L_PAREN, "Expected '(' after function name.");
 
@@ -213,7 +216,7 @@ Stmt Parser::parseFunctionDecl() {
     consume(TokenType::NEWLINE, "Expected newline.");
 
     Stmt body = makeStmt<BlockStmt>(parseBlock());
-    return makeStmt<FunctionDeclStmt>(returnType, nameToken, std::move(parameters), std::move(body));
+    return makeStmt<FunctionDeclStmt>(returnType, nameFunction, std::move(parameters), std::move(body));
 }
 
 BlockStmt Parser::parseBlock() {
@@ -256,10 +259,24 @@ Token Parser::peeknNext(int n = 1) const {
 bool Parser::isAtEnd() const {
     return peek().type == TokenType::END_OF_FILE;
 }
+bool Parser::isTypeToken(TokenType type) const {
+    switch (type) {
+        case TokenType::KW_INT:
+        case TokenType::KW_FLOAT:
+        case TokenType::KW_CHAR:
+        case TokenType::KW_STRING:
+        case TokenType::KW_BOOL:
+        case TokenType::KW_VOID:
+        case TokenType::IDENTIFIER:
+            return true;
+        default:
+            return false;
+    }
+}
 
 Token Parser::advance() {
     if (!isAtEnd()) current++;
-    return tokens[current - 1]; // Restituisce quello appena "superato"
+    return tokens[current - 1]; // Return just skipped one
 }
 
 bool Parser::check(TokenType type) const {
@@ -386,17 +403,20 @@ Expr Parser::parseVariable(Token token) {
 }
 
 Expr Parser::parseGrouping(Token token) {
-    // token is the '(' we just consumed. Now parse the expression inside.
+
+    Token openingParen =  consume(TokenType::L_PAREN, "Expected '(' for Grouping parsing");
+
     Expr expr = parseExpression();
 
     // We expect a closing parenthesis
     consume(TokenType::R_PAREN, "Expected ')' after expression.");
 
-    return makeExpr<GroupingExpr>(std::move(expr));
+    return makeExpr<GroupingExpr>(openingParen,std::move(expr));
 }
 
-Expr Parser::parseTernary(Expr left, Token opToken) {
+Expr Parser::parseTernary(Expr left) {
     // 'left' is the condition already parsed before the '?' token.
+    Token questionMark = consume(TokenType::OP_QUESTION, "Expected '?' for Ternary parsing");
 
     // Parse the middle expression (true branch)
     Expr trueBranch = parseExpression();
@@ -407,7 +427,7 @@ Expr Parser::parseTernary(Expr left, Token opToken) {
     // We use ASSIGNMENT precedence to allow chained ternary operators
     Expr falseBranch = parsePrecedence(Precedence::ASSIGNMENT);
 
-    return makeExpr<TernaryExpr>(std::move(left), std::move(trueBranch), std::move(falseBranch));
+    return makeExpr<TernaryExpr>(std::move(left), questionMark, std::move(trueBranch), std::move(falseBranch));
 }
 
 Expr Parser::parseUnary(Token token) {
@@ -421,19 +441,26 @@ Expr Parser::parseUnary(Token token) {
 
 Expr Parser::parseBinary(Expr left, Token opToken) {
     // opToken is the operator we just consumed, e.g. '+', '*'
-
-    // Find the binding power of this specific operator
     Precedence rulePrecedence = getPrecedence(opToken.type);
+    // Find the binding power of this specific operator
+    Precedence nextPrecedence;
+    if (rulePrecedence == Precedence::ASSIGNMENT) {
+        nextPrecedence = rulePrecedence;
+    } else {
+        nextPrecedence = static_cast<Precedence>(static_cast<int>(rulePrecedence) + 1);
+    }
 
     // Parse the right operand with a SLIGHTLY HIGHER precedence.
     // Example: if op is '+', we parse the right side rejecting other '+'
     // but accepting '*'. This guarantees Left-Associativity (1+2+3 -> (1+2)+3).
-    Precedence nextPrecedence = static_cast<Precedence>(static_cast<int>(rulePrecedence) + 1);
+
     Expr right = parsePrecedence(nextPrecedence);
 
     return makeExpr<BinaryExpr>(std::move(left), opToken, std::move(right));
+
 }
-Expr Parser::parseCall(Expr left, Token parenToken) {
+Expr Parser::parseCall(Expr callee) {
+    Token paren = consume(TokenType::L_PAREN, "Expected '(' for Call parsing");
     std::vector<Expr> arguments;
     if (!check(TokenType::R_PAREN)) {
         do {
@@ -441,18 +468,32 @@ Expr Parser::parseCall(Expr left, Token parenToken) {
         } while (match(TokenType::COMMA));
     }
     consume(TokenType::R_PAREN, "Expected ')' after arguments.");
-    return makeExpr<CallExpr>(std::move(left), parenToken, std::move(arguments));
+    return makeExpr<CallExpr>(std::move(callee), paren, std::move(arguments));
 }
 
-Expr Parser::parseArrayAccess(Expr left, Token bracketToken) {
+Expr Parser::parseArrayAccess(Expr indexed) {
+    Token bracketToken = consume(TokenType::L_BRACKET, "Expected '[' for ArrayAccess parsing");
     Expr index = parseExpression();
     consume(TokenType::R_BRACKET, "Expected ']' after array index.");
-    return makeExpr<ArrayAccessExpr>(std::move(left), std::move(index));
+    return makeExpr<ArrayAccessExpr>(std::move(indexed),bracketToken, std::move(index));
 }
 
-Expr Parser::parseMemberAccess(Expr left, Token dotToken) {
+Expr Parser::parseArrayLiteral() {
+    Token bracketToken = consume(TokenType::L_BRACKET, "Expected '[' for ArrayLiteral parsing");
+    std::vector<Expr> elements;
+    if (!check(TokenType::R_BRACKET)) {
+        do {
+            elements.push_back(parseExpression());
+        } while (match(TokenType::COMMA));
+    }
+    consume(TokenType::R_BRACKET, "Expected ']' after array literal.");
+    return makeExpr<ArrayLiteralExpr>(bracketToken, std::move(elements));
+}
+
+Expr Parser::parseMemberAccess(Expr accessed) {
+    Token dot = consume(TokenType::L_BRACKET, "Expected '[' for ArrayLiteral parsing");
     Token name = consume(TokenType::IDENTIFIER, "Expected property name after '.'.");
-    return makeExpr<MemberAccessExpr>(std::move(left), name);
+    return makeExpr<MemberAccessExpr>(std::move(accessed), dot, name);
 }
 
 Precedence Parser::getPrecedence(TokenType type) const {
@@ -486,6 +527,10 @@ Parser::NudHandlerMethod Parser::getNudHandler(TokenType type) const {
     switch (type) {
         case TokenType::INT_LITERAL:
         case TokenType::FLOAT_LITERAL:
+        case TokenType::HEX_LITERAL:
+        case TokenType::BIN_LITERAL:
+        case TokenType::OCT_LITERAL:
+        case TokenType::CHAR_LITERAL:
         case TokenType::STRING_LITERAL:
         case TokenType::RAW_STRING_LITERAL:
         case TokenType::FORMAT_STRING_LITERAL:

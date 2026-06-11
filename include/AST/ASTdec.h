@@ -13,6 +13,7 @@ struct GroupingExpr;
 struct CallExpr;
 struct MemberAccessExpr;
 struct ArrayAccessExpr;
+struct ArrayLiteralExpr;
 
 struct ExpressionStmt;
 struct VarDeclStmt;
@@ -37,6 +38,7 @@ using ExprVariant = std::variant<
     std::unique_ptr<CallExpr>,
     std::unique_ptr<MemberAccessExpr>,
     std::unique_ptr<ArrayAccessExpr>,
+    std::unique_ptr<ArrayLiteralExpr>,
     std::unique_ptr<TernaryExpr>
 >;
 
