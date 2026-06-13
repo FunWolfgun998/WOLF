@@ -56,12 +56,12 @@ struct BlockStmt {
     std::vector<Stmt> statements; // List of statements inside a block
 };
 
-//  if x == 1:
-//      ...
-//  elif x != 998:
-//      ...
-//  else:
-//      ...
+/*if x == 1:
+      ...
+  elif x != 998:
+      ...
+  else:
+      ... */
 struct IfStmt {
     Token keyword;                          // The 'if' token
     Expr condition;
@@ -70,18 +70,18 @@ struct IfStmt {
     std::unique_ptr<Stmt> elseBranch;       // Possible final 'else' branch (optional)
 };
 
-// elif x !=5:
-//      x = 9
-//      ...
+/*elif x !=5:
+    x = 9
+    ...*/
 struct ElseIfBranch {
     Token keyword; // The 'elif' token
     Expr condition;
     Stmt block;    // Body of the 'elif'
 };
 
-//  while(i<=998):
-//      i++
-//      ...
+/*while(i<=998):
+      i++
+      ...*/
 struct WhileStmt {
     Token keyword;  // The 'while' token
     Expr condition;
@@ -93,10 +93,18 @@ struct ReturnStmt {
     Token keyword;               // The 'return' token
     std::unique_ptr<Expr> value; // Optional return value
 };
+//break
+struct BreakStmt {
+    Token keyword;
+};
+//continue
+struct ContinueStmt {
+    Token keyword;
+};
 
-//  struct Point:
-//      int x
-//      ...
+/*struct Point:
+    int x
+    ...*/
 struct StructDeclStmt {
     Token name;
     std::vector<Stmt> fields; // Fields of the struct (must be VarDeclStmt)
@@ -131,10 +139,9 @@ struct ArrayLiteralExpr {
 
 // for x in start..end:
 struct ForStmt {
-    Token keyword;     // CORRETTO: era 'keywork'
+    Token keyword;     // The 'for' token for error tracking
     Token iteratorVar; // Variable 'x'
-    Expr startRange;   // Start of range (e.g. 0)
-    Expr endRange;     // End of range (e.g. 10)
+    Expr iterable;   // 1..998
     Stmt body;         // Body of the loop
 };
 

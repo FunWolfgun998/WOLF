@@ -49,6 +49,9 @@ private:
     Stmt parseWhileStmt();
     Stmt parseForStmt();
     Stmt parseReturnStmt();
+    Stmt parseBreakStmt();
+    Stmt parseContinueStmt();
+
 
     // --- 2. EXPRESSION PARSERS (Node Builders) ---
     Expr parseExpression();
@@ -62,6 +65,7 @@ private:
     Expr parseUnary(Token op);
     Expr parsePostfix(Expr left, Token op);
     Expr parseBinary(Expr left, Token op);
+    Expr parseRange(Expr left, Token opToken);
     Expr parseCall(Expr callee, Token openingParen);
     Expr parseArrayAccess(Expr indexed, Token openingBracket);
     Expr parseMemberAccess(Expr accessed, Token dot);

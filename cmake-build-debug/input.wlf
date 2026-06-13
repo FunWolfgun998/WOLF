@@ -1,83 +1,104 @@
 // ==========================================
-// PARTE 1: SINTASSI VALIDA (Deve passare liscia)
+// PARTE 1: SINTASSI VALIDA (Front-End Challenge)
 // ==========================================
 
-// Numeri, Basi e Scientifici
-int ddd = 10.
-int metgoh 0 10.methot()
+// 1. Numeri e Basi (Lexer Check)
 int dec = 42
 int hex = 0xFF
 int bin = 0b1010
 int oct = 0o77
 float p = 3.14159
-float sci = 7.98e67
+float sci = 7.98e10
+float dot_start = .5
+float dot_end = 10.
 
-// Edge Cases dei Punti (Dot Ambiguity)
-int start = 1..10       // Range operator
-int ten = 10.           // Int seguito da operatore punto
-float half = .5         // Float senza zero iniziale
+// 2. Ambiguità del Punto (Lexer + Parser)
+int simple_dot = 10.method()
+int range_dot = 1..10
+float complex_dot = .5.toString()
 
-// Unicode e String Interning
-string nome = "Wolf"
-int _under_score = 100
-string città = "Roma"   // Unicode support (\xC3\xA0)
+// 3. Stringhe e Caratteri (Escapes & Types)
+string normal = "Wolf Lang\nVersion 1.0"
+string raw = r"C:\Users\Name\Desktop"
+string fmt = f"Value is: {dec}"
+char tab = '\t'
+char unicode = 'Ω'
 
-// Stringhe Speciali e Caratteri
-string path = r"C:\Users\Wolf"     // Raw string
-string format = f"Val: {dec}"      // Format string
-char nl = '\n'
-char letter = 'A'
+// 4. Espressioni Complesse (Pratt Parser Power)
+// Questo controlla: Postfissi, Prefissi, Aritmetica, Logica, Ternario e Assegnamenti
+bool logic = !true || (x++ * 2) >= --y << 2 && ~(a ^ b) ? true : false
+int chaining = a = b = c = 50
+int math = 1 + 2 * 3 / (4 - 5) % 6
 
-// Operatori a 1, 2 e 3 livelli
-x++
-x --
-x <<= 2
-bool check = (x >= 40) && (x != 0) || ~(x) ? 1 : 0
-int arr =[1, 2, 3][0]
+// 5. Array (Literals & Access)
+int list = [1, 2, 3, 4 + 5][0]
+int matrix = [[1, 0], [0, 1]][1][1]
 
-// Indentazione corretta (Python style)
-if (dec > 0):
-    int inner = 1
-    if (inner == 1):
-        print("OK")
-    // Dedent a livello 1
-    dec += 1
+// 6. Strutture Controllo Flusso (Recursive Descent)
+if dec > 0:
+    int a = 1
+    while a < 10:
+        a++
+        if a == 5:
+            continue
+        elif a == 8:
+            break
+elif dec < 0:
+    return -1
 else:
-    dec -= 1
+    print("Zero")
 
-// Commenti Annidati Corretti
-/* Livello 1
-   /* Livello 2 */
-   Ritorno a Livello 1 */
+// 7. Funzioni e Parametri (Default Values)
+void fast_func(int a, float b = 3.14, string msg = "Default"):
+    for i in 0..a:
+        print(msg)
+    return
+
+// 8. Structs (User Defined Types)
+struct Player:
+    string name
+    int score = 0
+    float health = 100.0
 
 // ==========================================
-// PARTE 2: ERRORI INTENZIONALI (Deve segnalarli)
+// PARTE 2: ERRORI INTENZIONALI (Lexer & Parser Check)
 // ==========================================
 
-// Errore 1: Caratteri sconosciuti
+// --- Errori del Lexer ---
+
+// Caratteri alieni
 @ $
 
-// Errore 2: Overflow numerico
-int troppo_grande = 9999999999999999999999999999999999999999999999
+// Overflow (Numero troppo grande per long long)
+int overflow = 9999999999999999999999999999999999999999
 
-// Errore 3: Stringhe non chiuse (si ferma al \n)
-string err_str = "Questa non si chiude
+// Stringhe e Char malformati
+string s1 = "Dimentico la chiusura
+char c1 = 'abc'
+char c2 = ''
+char c3 = '\q'
 
-// Errore 4: Raw e Format string non chiuse
-string err_raw = r"Raw aperta
-string err_fmt = f"Format aperta
+// --- Errori del Parser (Panic Mode Check) ---
 
-// Errore 5: Errori sui char
-char e1 = ''         // Vuoto
-char e2 = '\q'       // Escape non valido
-char e3 = 'abc'      // Troppo lungo
-char e4 = 'z         // Non chiuso
+// Errore: Manca i due punti dopo l'if
+if true
+    print("No colon")
 
-// Errore 6: Errore di indentazione (Inconsistente)
-if (true):
-    int a = 1
-  int b = 2          // Torna a 2 spazi invece di 0!
+// Errore: Operatore binario tronco
+int bug = 10 +
 
-// Errore 7: Commento multilinea non chiuso (Lancia l'errore a EOF)
-/* Questo commento
-   non si chiuderà mai...
+// Errore: Parentesi non bilanciate
+int paren = (1 + 2
+
+// Errore: Indentazione Inconsistente
+if true:
+    int ok = 1
+  int error = 2
+
+// Errore: Funzione dentro una funzione (Se non lo permetti)
+void outer():
+    void inner():
+        return
+
+// Commento non chiuso (Deve scattare a fine file)
+/* Inizio ma non finisco...

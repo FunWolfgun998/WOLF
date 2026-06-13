@@ -38,6 +38,8 @@ Stmt Parser::parseStatement() {
     if (check(TokenType::KW_FOR)) return parseForStmt();
     if (check(TokenType::KW_STRUCT)) return parseStructDecl();
     if (check(TokenType::KW_RETURN)) return parseReturnStmt();
+    if (check(TokenType::KW_BREAK)) return parseBreakStmt();
+    if (check(TokenType::KW_CONTINUE)) return parseContinueStmt();
     // Fallback: Expression Statement (e.g., "x = 5" or "functionCall()")
     Expr expr = parseExpression();
 
@@ -102,7 +104,11 @@ Stmt Parser::parseFunctionDecl() {
         do {
             Token paramType = advance(); // We should check if the type is valid but that happened on the
             Token paramName = consume(TokenType::IDENTIFIER, "Expected parameter name.");
-            parameters.push_back(Parameter{paramType, paramName});
+            std::unique_ptr<Expr> defValue = nullptr;
+            if (match(TokenType::OP_ASSIGN)) {
+                defValue = std::make_unique<Expr>(parseExpression());
+            }
+            parameters.push_back(Parameter{paramType, paramName, std::move(defValue)});
         } while (match(TokenType::COMMA));
     }
 
@@ -200,17 +206,15 @@ Stmt Parser::parseForStmt() {
     Token iteratorVar = consume(TokenType::IDENTIFIER, "Expected variable name after 'for'.");
     consume(TokenType::KW_IN, "Expected 'in' after iterator variable.");
 
-    Expr startRange = parseExpression();
-    consume(TokenType::RANGE_OP, "Expected '..' in range expression.");
-    Expr endRange = parseExpression();
+    Expr iterable = parseExpression();
 
-    consume(TokenType::COLON, "Expected ':' after for range.");
+    consume(TokenType::COLON, "Expected ':' after the range.");
 
     consume(TokenType::NEWLINE, "Expected newline after ':'.");
 
     Stmt body = makeStmt<BlockStmt>(parseBlock());
 
-    return makeStmt<ForStmt>(keyword, iteratorVar, std::move(startRange), std::move(endRange), std::move(body));
+    return makeStmt<ForStmt>(keyword, iteratorVar, std::move(iterable), std::move(body));
 }
 Stmt Parser::parseReturnStmt() {
     // return "Hello XD" + variableWithALongName
@@ -226,6 +230,20 @@ Stmt Parser::parseReturnStmt() {
     consume(TokenType::NEWLINE, "Expected newline after return statement.");
 
     return makeStmt<ReturnStmt>(keyword, std::move(returnedValue));
+}
+Stmt Parser::parseBreakStmt() {
+    Token keyword=  consume(TokenType::KW_BREAK, "Expected 'break' for break parsing");
+    // Expect newline after break
+    consume(TokenType::NEWLINE, "Expected newline after break statement.");
+
+    return makeStmt<BreakStmt>(keyword);
+}
+Stmt Parser::parseContinueStmt() {
+    Token keyword=  consume(TokenType::KW_CONTINUE, "Expected 'continue' for continue parsing");
+    // Expect newline after continue
+    consume(TokenType::NEWLINE, "Expected newline after continue.");
+
+    return makeStmt<BreakStmt>(keyword);
 }
 
 // EXPRESSION PARSERS (Node Builders)
@@ -321,6 +339,10 @@ Expr Parser::parseBinary(Expr left, Token opToken) {
 
     return makeExpr<BinaryExpr>(std::move(left), opToken, std::move(right));
 
+}
+Expr Parser::parseRange(Expr left, Token opToken) {
+    Expr right = parsePrecedence(Precedence::COMPARISON);
+    return makeExpr<RangeExpr>(std::move(left), opToken, std::move(right));
 }
 Expr Parser::parseTernary(Expr condition, Token questionMark) {
 
@@ -434,7 +456,7 @@ Parser::LedHandlerMethod Parser::getLedHandler(TokenType type) const {
         case TokenType::OP_INC: case TokenType::OP_DEC: return &Parser::parsePostfix;
         case TokenType::L_PAREN: return &Parser::parseCall;
         case TokenType::L_BRACKET: return &Parser::parseArrayAccess;
-        case TokenType::RANGE_OP: return &Parser::parseBinary;
+        case TokenType::RANGE_OP: return &Parser::parseRange;
         case TokenType::DOT: return &Parser::parseMemberAccess;
         case TokenType::OP_QUESTION: return &Parser::parseTernary;
         default: return nullptr;

@@ -25,6 +25,8 @@ struct ForStmt;
 struct FunctionDeclStmt;
 struct StructDeclStmt;
 struct ReturnStmt;
+struct BreakStmt;
+struct ContinueStmt;
 struct TernaryExpr;
 
 
@@ -56,6 +58,8 @@ using StmtVariant = std::variant<
     std::unique_ptr<IfStmt>,
     std::unique_ptr<WhileStmt>,
     std::unique_ptr<ReturnStmt>,
+    std::unique_ptr<BreakStmt>,
+    std::unique_ptr<ContinueStmt>,
     std::unique_ptr<ForStmt>,
     std::unique_ptr<FunctionDeclStmt>,
     std::unique_ptr<StructDeclStmt>

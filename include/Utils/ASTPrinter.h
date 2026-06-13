@@ -21,7 +21,8 @@ private:
 
     template<typename Type>
     //
-    void printBrach(const Type& branchTypeVariant, bool isLastBranch, const std::string& labelBranch = "") {
+    void printBranch(const Type& branchTypeVariant, bool isLastBranch, const std::string& labelBranch = "") {
+        out << "\n";
         out << currentPrefix;
         out << (isLastBranch ? "└── " : "├── ");
         if (!labelBranch.empty()) out << labelBranch <<": ";
@@ -40,7 +41,7 @@ public:
         out << "--- WOLF ABSTRACT SYNTAX TREE ---\n";
         for (size_t i = 0; i < statements.size(); ++i) {
             bool isLast = (i == statements.size() - 1);
-            printBrach(statements[i].as, isLast, "Statement");
+            printBranch(statements[i].as, isLast, "Statement");
         }
     }
     //Fallback method if type is not present
@@ -60,6 +61,7 @@ public:
     void operator()(const std::unique_ptr<ArrayAccessExpr>& node);
     void operator()(const std::unique_ptr<ArrayLiteralExpr>& node);
     void operator()(const std::unique_ptr<TernaryExpr>& node);
+    void operator()(const std::unique_ptr<RangeExpr>& node);
 
     // -- Statements (from StmtVariant) --
     void operator()(const std::unique_ptr<ExpressionStmt>& node);
@@ -68,6 +70,8 @@ public:
     void operator()(const std::unique_ptr<IfStmt>& node);
     void operator()(const std::unique_ptr<WhileStmt>& node);
     void operator()(const std::unique_ptr<ReturnStmt>& node);
+    void operator()(const std::unique_ptr<BreakStmt>& node);
+    void operator()(const std::unique_ptr<ContinueStmt>& node);
     void operator()(const std::unique_ptr<ForStmt>& node);
     void operator()(const std::unique_ptr<FunctionDeclStmt>& node);
     void operator()(const std::unique_ptr<StructDeclStmt>& node);
