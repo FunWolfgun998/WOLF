@@ -358,10 +358,10 @@ void Lexer::number() {
         if (peek() == '.') {
             if (peekNext() == '.') {
                 // Range operator lookahead (e.g. 10..20). We stop here.
-            } else if (!isdigit(peekNext())) {
+            } else if (isalpha(peekNext()) || peekNext() == '_') {
                 // Method call lookahead (e.g. 10.toString()). We stop here.
             } else {
-                // Standard float (e.g. 10.5)
+                // Standard float (e.g. 10.5 10. )
                 type = TokenType::FLOAT_LITERAL;
                 advance();
                 while (isdigit(peek())) advance();

@@ -23,11 +23,15 @@ void ASTPrinter::operator()(const std::unique_ptr<BinaryExpr>& node) {
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<UnaryExpr>& node) {
-    out << "UnaryExpr(Op: " << node->op.lexeme << ")\n";
     // Unary only has one child, so it's always the last
-    printBrach(node->right.as, true, "Right");
+    if (node->isPostfix) {
+        out << "PostfixUnaryExpr(Op: " << node->op.lexeme << ")\n";
+        printBrach(node->operand.as, true, "Left");
+    } else {
+        out << "PrefixUnaryExpr(Op: " << node->op.lexeme << ")\n";
+        printBrach(node->operand.as, true, "Right");
+    }
 }
-
 void ASTPrinter::operator()(const std::unique_ptr<GroupingExpr>& node) {
     out << "GroupingExpr\n";
     printBrach(node->expression.as, true, "Expression");
@@ -48,8 +52,25 @@ void ASTPrinter::operator()(const std::unique_ptr<CallExpr>& node) {
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<MemberAccessExpr>& node) {
-    out << "MemberAccessExpr(Field: " << node->name.lexeme << ")\n";
-    printBrach(node->object.as, true, "Object");
+    out << "MemberAccessExpr(Field: " << node->member.lexeme << ")\n";
+    printBrach(node->accessed.as, true, "Object");
+}
+
+void ASTPrinter::operator()(const std::unique_ptr<ArrayLiteralExpr>& node) {
+    out << "ArrayLiteralExpr\n";
+
+    // Empty array
+    if (node->elements.empty()) {
+        out << currentPrefix << "└── (Empty Array)\n";
+        return;
+    }
+
+    // Loop with all nodes
+    for (size_t i = 0; i < node->elements.size(); ++i) {
+        bool isLast = (i == node->elements.size() - 1);
+        std::string label = "Element[" + std::to_string(i) + "]";
+        printBrach(node->elements[i].as, isLast, label);
+    }
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<ArrayAccessExpr>& node) {

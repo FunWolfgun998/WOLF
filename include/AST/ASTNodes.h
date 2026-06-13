@@ -4,7 +4,6 @@
 #include "../Lexer/Token.h"
 
 // --- EXPRESSION NODES ---
-
 struct LiteralExpr {
     Token value; // Holds the literal value (int, float, string, etc.)
 };
@@ -13,15 +12,24 @@ struct VariableExpr {
     Token name; // Identifier name and ID
 };
 
+// 5 + var
 struct BinaryExpr {
     Expr left;   // Left expression
     Token op;    // Operator token (+, -, *, ==)
     Expr right;  // Right expression
 };
 
+// 1..10
+struct RangeExpr {
+    Expr start;
+    Token op;
+    Expr end;
+};
+
+// i++ or ++j
 struct UnaryExpr {
     Token op;       // Operator (-, !, ~, ++, --)
-    Expr right;     // The operand expression
+    Expr operand;     // The operand expression
     bool isPostfix; // Needed to differentiate ++x from x++
 };
 
@@ -37,9 +45,9 @@ struct GroupingExpr {
 struct ExpressionStmt {
     Expr expression;
 };
-
+// int i or int j = 0 or Person programmer = Person("Cristian")
 struct VarDeclStmt {
-    Token type;                        // Variable type (e.g., KW_INT)
+    Token type;                        // Variable type (e.g. KW_INT)
     Token name;                        // Variable identifier
     std::unique_ptr<Expr> initializer; // Optional initial value
 };
@@ -48,6 +56,12 @@ struct BlockStmt {
     std::vector<Stmt> statements; // List of statements inside a block
 };
 
+//  if x == 1:
+//      ...
+//  elif x != 998:
+//      ...
+//  else:
+//      ...
 struct IfStmt {
     Token keyword;                          // The 'if' token
     Expr condition;
@@ -56,25 +70,33 @@ struct IfStmt {
     std::unique_ptr<Stmt> elseBranch;       // Possible final 'else' branch (optional)
 };
 
+// elif x !=5:
+//      x = 9
+//      ...
 struct ElseIfBranch {
     Token keyword; // The 'elif' token
     Expr condition;
     Stmt block;    // Body of the 'elif'
 };
 
+//  while(i<=998):
+//      i++
+//      ...
 struct WhileStmt {
     Token keyword;  // The 'while' token
     Expr condition;
     Stmt body;      // Body of the loop
 };
 
-// return "Hello XD"
+// return or return "Hello XD"
 struct ReturnStmt {
     Token keyword;               // The 'return' token
     std::unique_ptr<Expr> value; // Optional return value
 };
 
-// struct Point:
+//  struct Point:
+//      int x
+//      ...
 struct StructDeclStmt {
     Token name;
     std::vector<Stmt> fields; // Fields of the struct (must be VarDeclStmt)

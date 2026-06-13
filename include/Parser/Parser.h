@@ -39,58 +39,36 @@ private:
     const std::vector<Token>& tokens;
     size_t current = 0;
 
-    // --- Navigation Helpers ---
-    //Rispettando alla lettera la regola: non si guarda mai indietro cattureremo il token mentre lo consumiamo con advance()..
-    Token peek() const;
-    Token peeknNext(int n) const;
-
-    Token advance();
-    bool isAtEnd() const;
-    bool isTypeToken(TokenType type) const;
-    bool check(TokenType type) const;
-    bool match(TokenType type);
-    Token consume(TokenType type, const std::string& message);
-
-    // --- Error Handling ---
-    void error(const Token& token, const std::string& message);
-    void synchronize();
-
-    //Statement parser methods (Recursive Descent)
+    // --- 1. STATEMENT PARSERS (Recursive Descent) ---
     Stmt parseStatement();
+    BlockStmt parseBlock(); // Handle Indent and Dedent
     Stmt parseVarDecl();
+    Stmt parseFunctionDecl();
+    Stmt parseStructDecl();
     Stmt parseIfStmt();
     Stmt parseWhileStmt();
     Stmt parseForStmt();
-
-    Stmt parseFunctionDecl(Token returnType);
-
-    Stmt parseFunctionDecl();
-    Stmt parseStructDecl();
     Stmt parseReturnStmt();
-    BlockStmt parseBlock(); //Handel Indent and Dedent
 
-
-    // Pratt parser methods (Expressions)
-
+    // --- 2. EXPRESSION PARSERS (Node Builders) ---
+    Expr parseExpression();
     // Parses an expression stopping when it hits an operator with lower precedence
     Expr parsePrecedence(Precedence precedence);
-    Expr parsePostfix(Expr left, Token opToken);
-    Expr parseTernary(Expr left);
-    Expr parseExpression();
-    // expression methods (Node Builders)
 
     Expr parseLiteral(Token token);
     Expr parseVariable(Token token);
-    Expr parseGrouping(Token token);
-    Expr parseUnary(Token token);
-    Expr parseBinary(Expr left, Token opToken);
-    Expr parseCall(Expr callee);
-    Expr parseMemberAccess(Expr accessed);
-    Expr parseArrayAccess(Expr indexed);
-    Expr parseArrayLiteral();
+    Expr parseGrouping(Token openingParen);
+    Expr parseArrayLiteral(Token openingBracket);
+    Expr parseUnary(Token op);
+    Expr parsePostfix(Expr left, Token op);
+    Expr parseBinary(Expr left, Token op);
+    Expr parseCall(Expr callee, Token openingParen);
+    Expr parseArrayAccess(Expr indexed, Token openingBracket);
+    Expr parseMemberAccess(Expr accessed, Token dot);
+    Expr parseTernary(Expr condition, Token questionMark);
 
-    // --- LOOKUP TABLES (Function Pointers) ---
 
+    // --- 3. PRATT PARSER HELPERS (Lookup Tables) ---
     /*
         A rule for tokens that don't need a left-hand side.
         Example: Numbers (5), Unary minus (-5), Opening parenthesis ( (1+2) )
@@ -104,8 +82,21 @@ private:
     */
     using LedHandlerMethod = Expr (Parser::*)(Expr left, Token opToken);
 
-    // Helper methods to fetch the correct rule and precedence for a given token type
+    Precedence getPrecedence(TokenType type) const;
     NudHandlerMethod getNudHandler(TokenType type) const;
     LedHandlerMethod getLedHandler(TokenType type) const;
-    Precedence getPrecedence(TokenType type) const;
+
+    // --- 4. NAVIGATION HELPERS ---
+    Token advance();
+    Token peek() const;
+    Token peeknNext(int n) const;
+    Token consume(TokenType type, const std::string& message);
+    bool match(TokenType type);
+    bool check(TokenType type) const;
+    bool isAtEnd() const;
+    bool isTypeToken(TokenType type) const;
+
+    // --- 5. ERROR HANDLING ---
+    void error(const Token& token, const std::string& message);
+    void synchronize();
 };
