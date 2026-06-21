@@ -93,12 +93,13 @@ private:
     // --- 4. NAVIGATION HELPERS ---
     Token advance();
     Token peek() const;
-    Token peeknNext(int n) const;
+    Token peeknNext(int n = 1) const;
     Token consume(TokenType type, const std::string& message);
     bool match(TokenType type);
     bool check(TokenType type) const;
     bool isAtEnd() const;
     bool isTypeToken(TokenType type) const;
+    void consumeStatementEnd();
 
     // --- 5. ERROR HANDLING ---
     void error(const Token& token, const std::string& message);

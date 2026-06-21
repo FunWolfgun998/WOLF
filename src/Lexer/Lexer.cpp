@@ -581,6 +581,41 @@ void Lexer::formatString() {
     advance(); // Consuma "
     addToken(TokenType::FORMAT_STRING_LITERAL, processedValue);
 }
+
+uint32_t Lexer::decodeUtf8() {
+    uint8_t firstByte = static_cast<uint8_t>(advance());
+
+    // 1-byte ASCII (0xxxxxxx)
+    if (firstByte < 0x80) return firstByte;
+
+    uint32_t codePoint = 0;
+    int extraBytes = 0;
+
+    // Determine how many bytes this character uses
+    if ((firstByte & 0xE0) == 0xC0) { codePoint = firstByte & 0x1F; extraBytes = 1; }
+    else if ((firstByte & 0xF0) == 0xE0) { codePoint = firstByte & 0x0F; extraBytes = 2; }
+    else if ((firstByte & 0xF8) == 0xF0) { codePoint = firstByte & 0x07; extraBytes = 3; }
+    else {
+        manageError("Invalid UTF-8 starting byte");
+        return 0;
+    }
+
+    // Read the continuation bytes
+    for (int i = 0; i < extraBytes; i++) {
+        if (isAtEnd()) {
+            manageError("Unterminated UTF-8 sequence");
+            return 0;
+        }
+        uint8_t b = static_cast<uint8_t>(advance());
+        if ((b & 0xC0) != 0x80) {
+            manageError("Invalid UTF-8 continuation byte");
+            return 0;
+        }
+        codePoint = (codePoint << 6) | (b & 0x3F);
+    }
+    return codePoint;
+}
+
 void Lexer::charLiteral() {
     if (isAtEnd() || peek() == '\'') {
         manageError("Empty character literal");
@@ -588,10 +623,11 @@ void Lexer::charLiteral() {
         return;
     }
 
-    char value = 0;
+    uint32_t value = 0;
 
+    // Handle Escape Sequences (e.g. '\n')
     if (peek() == '\\') {
-        advance();
+        advance(); // consume '\'
 
         if (isAtEnd()) {
             manageError("Unterminated character literal");
@@ -620,7 +656,7 @@ void Lexer::charLiteral() {
         advance();
     }
     else {
-        value = advance();
+        value = decodeUtf8();
 
     }
 
@@ -653,3 +689,4 @@ void Lexer::addToken(TokenType type, LiteralValue value) {
     std::string text = source.substr(start, current - start);
     tokens.emplace_back(type, text, line, startColumn, std::move(value));
 }
+

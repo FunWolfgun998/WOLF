@@ -1,104 +1,59 @@
-// ==========================================
-// PARTE 1: SINTASSI VALIDA (Front-End Challenge)
-// ==========================================
+// ============================================================
+// WOLF LANG - TEST SUITE COMPLETA
+// ============================================================
 
-// 1. Numeri e Basi (Lexer Check)
-int dec = 42
-int hex = 0xFF
-int bin = 0b1010
-int oct = 0o77
-float p = 3.14159
-float sci = 7.98e10
-float dot_start = .5
-float dot_end = 10.
+// 1. TEST UNICODE (La nuova Opzione B)
+// Questi caratteri ora verranno salvati come uint32_t (Code Points)
+char alpha = 'α'
+char omega = 'Ω'
+char heart = '❤'
+char pizza = '🍕' // Emoji (4 byte in UTF-8, 1 Code Point in WOLF)
+char escape = '\n'
 
-// 2. Ambiguità del Punto (Lexer + Parser)
-int simple_dot = 10.method()
-int range_dot = 1..10
-float complex_dot = .5.toString()
+// 2. TEST NUMERI E AMBIGUITÀ DEL PUNTO
+float f1 = 10.      // Deve essere FLOAT_LITERAL (10.0)
+float f2 = .5       // Deve essere FLOAT_LITERAL (0.5)
+int hex = 0xFF      // 255
+int bin = 0b1010    // 10
+int r_access = 10.toString((3+67)==70) // 10 è INT, . è DOT, toString è IDENTIFIER
 
-// 3. Stringhe e Caratteri (Escapes & Types)
-string normal = "Wolf Lang\nVersion 1.0"
-string raw = r"C:\Users\Name\Desktop"
-string fmt = f"Value is: {dec}"
-char tab = '\t'
-char unicode = 'Ω'
+// 3. TEST ESPRESSIONI E PRECEDENZE (Pratt Parser)
+// Controlla l'associatività a destra dell'assegnamento e il ternario
+int a = 0
+int b = 0
+int c = a = b = 42
+bool logic = !true || (a++ * 2) >= --b << 2 ? true : false
+int range_test = [1*87-7, 2, 3, 4][0..2]
 
-// 4. Espressioni Complesse (Pratt Parser Power)
-// Questo controlla: Postfissi, Prefissi, Aritmetica, Logica, Ternario e Assegnamenti
-bool logic = !true || (x++ * 2) >= --y << 2 && ~(a ^ b) ? true : false
-int chaining = a = b = c = 50
-int math = 1 + 2 * 3 / (4 - 5) % 6
-
-// 5. Array (Literals & Access)
-int list = [1, 2, 3, 4 + 5][0]
-int matrix = [[1, 0], [0, 1]][1][1]
-
-// 6. Strutture Controllo Flusso (Recursive Descent)
-if dec > 0:
-    int a = 1
-    while a < 10:
-        a++
-        if a == 5:
+// 4. TEST STRUTTURE DI CONTROLLO (Blocchi Uniformi)
+if c > 0:
+    int internal = 100
+    while internal > 0:
+        internal--
+        if internal == 50:
+            continue // Test Break/Continue
+        elif internal == 10:
             continue
-        elif a == 8:
-            break
-elif dec < 0:
-    return -1
 else:
-    print("Zero")
+    print("Lower than zero")
 
-// 7. Funzioni e Parametri (Default Values)
-void fast_func(int a, float b = 3.14, string msg = "Default"):
-    for i in 0..a:
-        print(msg)
-    return
+// 5. TEST FUNZIONI CON VALORI DI DEFAULT
+// Verifica se il Printer ora mostra i valori di default (defaultValue)
+void process_data(int id, float factor = 1.5, string label = "RUN"):
+    for i in 0..id:
+        if i % 2 == 0:
+            print(label)
+    return // Void return
 
-// 8. Structs (User Defined Types)
-struct Player:
-    string name
-    int score = 0
-    float health = 100.0
+// 6. TEST STRUCT (Campi come Statement)
+struct Robot:
+    string model
+    int version = 1
+    float battery = 99.9
 
-// ==========================================
-// PARTE 2: ERRORI INTENZIONALI (Lexer & Parser Check)
-// ==========================================
+// 7. TEST ARRAY MULTIDIMENSIONALI
+int matrix_val = [[1, 2], [3, 4]][1][0]
 
-// --- Errori del Lexer ---
-
-// Caratteri alieni
-@ $
-
-// Overflow (Numero troppo grande per long long)
-int overflow = 9999999999999999999999999999999999999999
-
-// Stringhe e Char malformati
-string s1 = "Dimentico la chiusura
-char c1 = 'abc'
-char c2 = ''
-char c3 = '\q'
-
-// --- Errori del Parser (Panic Mode Check) ---
-
-// Errore: Manca i due punti dopo l'if
-if true
-    print("No colon")
-
-// Errore: Operatore binario tronco
-int bug = 10 +
-
-// Errore: Parentesi non bilanciate
-int paren = (1 + 2
-
-// Errore: Indentazione Inconsistente
-if true:
-    int ok = 1
-  int error = 2
-
-// Errore: Funzione dentro una funzione (Se non lo permetti)
-void outer():
-    void inner():
-        return
-
-// Commento non chiuso (Deve scattare a fine file)
-/* Inizio ma non finisco...
+// 8. STRINGHE SPECIALI
+string path = r"C:\Users\Wolf\Documents" // Raw string: gli slash restano letterali
+string info = f"Robot version: {version}"// Format string

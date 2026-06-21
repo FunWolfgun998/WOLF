@@ -19,18 +19,13 @@ std::vector<Stmt> Parser::parse() {
 // STATEMENT PARSERS (Recursive Descent)
 Stmt Parser::parseStatement() {
     // 1. Types (Variables OR Functions)
-    if (check(TokenType::KW_INT) || check(TokenType::KW_FLOAT) ||
-        check(TokenType::KW_CHAR) || check(TokenType::KW_STRING) ||
-        check(TokenType::KW_BOOL) || check(TokenType::KW_VOID)) { // Added VOID for functions!
-
-        // Peek at the next token to decide!
+    if (isTypeToken(peek().type)&&(peeknNext().type == TokenType::IDENTIFIER) ) {
         // We know that peekNext(1) is the identifier.  If the peeknNext(2) is a '(' is a function otherwise is a variable declaration.
         if (peeknNext(2).type == TokenType::L_PAREN) {
             return parseFunctionDecl(); // It's a function!
-        } else {
-            return parseVarDecl(); // It's a variable!
         }
-        }
+        return parseVarDecl(); // It's a variable!
+    }
 
     // 2. Control Flow
     if (check(TokenType::KW_IF)) return parseIfStmt();
@@ -44,7 +39,7 @@ Stmt Parser::parseStatement() {
     Expr expr = parseExpression();
 
     // In WOLF, standalone expressions must end with a newline
-    consume(TokenType::NEWLINE, "Expected newline after expression.");
+    consumeStatementEnd();
 
     return makeStmt<ExpressionStmt>(std::move(expr));
 }
@@ -88,7 +83,7 @@ Stmt Parser::parseVarDecl() {
     }
 
     // Statement terminator
-    consume(TokenType::NEWLINE, "Expected newline after variable declaration.");
+    consumeStatementEnd();
 
     return makeStmt<VarDeclStmt>(typeVar, nameVariable, std::move(initializer));
 }
@@ -102,7 +97,7 @@ Stmt Parser::parseFunctionDecl() {
     // If there are parameters
     if (!check(TokenType::R_PAREN)) {
         do {
-            Token paramType = advance(); // We should check if the type is valid but that happened on the
+            Token paramType = advance(); // We should check if the type is valid but that happened on the semantic
             Token paramName = consume(TokenType::IDENTIFIER, "Expected parameter name.");
             std::unique_ptr<Expr> defValue = nullptr;
             if (match(TokenType::OP_ASSIGN)) {
@@ -114,7 +109,7 @@ Stmt Parser::parseFunctionDecl() {
 
     consume(TokenType::R_PAREN, "Expected ')' after parameters.");
     consume(TokenType::COLON, "Expected ':' before function body.");
-    consume(TokenType::NEWLINE, "Expected newline.");
+    consume(TokenType::NEWLINE, "Expected newline before function body.");
 
     Stmt body = makeStmt<BlockStmt>(parseBlock());
     return makeStmt<FunctionDeclStmt>(returnType, nameFunction, std::move(parameters), std::move(body));
@@ -222,28 +217,26 @@ Stmt Parser::parseReturnStmt() {
 
     // "Hello XD" + variableWithALongName
     std::unique_ptr<Expr> returnedValue = nullptr;
-    if (!check(TokenType::NEWLINE)) {
+    if (!(check(TokenType::NEWLINE) || check(TokenType::END_OF_FILE))) {
         returnedValue = std::make_unique<Expr>(parseExpression());
     }
-
-    // Expect newline after expression
-    consume(TokenType::NEWLINE, "Expected newline after return statement.");
+    consumeStatementEnd();
 
     return makeStmt<ReturnStmt>(keyword, std::move(returnedValue));
 }
 Stmt Parser::parseBreakStmt() {
     Token keyword=  consume(TokenType::KW_BREAK, "Expected 'break' for break parsing");
     // Expect newline after break
-    consume(TokenType::NEWLINE, "Expected newline after break statement.");
+    consumeStatementEnd();
 
     return makeStmt<BreakStmt>(keyword);
 }
 Stmt Parser::parseContinueStmt() {
     Token keyword=  consume(TokenType::KW_CONTINUE, "Expected 'continue' for continue parsing");
     // Expect newline after continue
-    consume(TokenType::NEWLINE, "Expected newline after continue.");
+    consumeStatementEnd();
 
-    return makeStmt<BreakStmt>(keyword);
+    return makeStmt<ContinueStmt>(keyword);
 }
 
 // EXPRESSION PARSERS (Node Builders)
@@ -477,7 +470,7 @@ Token Parser::peek() const {
     return tokens[current];
 }
 // PeeknNext return the token at the position current + n. n can be negative to allow check "behind"
-Token Parser::peeknNext(int n = 1) const {
+Token Parser::peeknNext(int n) const {
     if (n<=0 && current <= -n ) {
         //if we want to see in the back using negative numbers we check that we aren't too back to have a negative number
         return tokens.front();
@@ -523,6 +516,18 @@ bool Parser::isTypeToken(TokenType type) const {
             return true;
         default:
             return false;
+    }
+}
+
+void Parser::consumeStatementEnd() {
+    std::string erMessage = "Expected newline";
+    if (check(TokenType::NEWLINE)) {
+        erMessage+=" at the end of the statement.";
+        advance();
+    } else if (isAtEnd()) {
+    } else {
+        error(peek(), erMessage);
+        throw ParseError();
     }
 }
 
