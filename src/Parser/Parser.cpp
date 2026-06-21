@@ -150,6 +150,37 @@ Stmt Parser::parseStructDecl() {
     // Return the completed struct declaration
     return makeStmt<StructDeclStmt>(nameToken, std::move(fields));
 }
+Stmt Parser::parseClassDecl()
+{
+    Token keyword= consume(TokenType::KW_CLASS, "Expected 'class' for class parsing");
+    Token name = consume(TokenType::IDENTIFIER, "Expected class name.");
+    consume(TokenType::COLON, "Expected ':' after class name.");
+    consume(TokenType::NEWLINE, "Expected newline.");
+
+    std::vector<Stmt> members;
+    consume(TokenType::INDENT, "Expected indented block for class body.");
+
+    while (!check(TokenType::DEDENT) && !isAtEnd()) {
+        if (match(TokenType::NEWLINE)) continue;
+
+        //Like the Parser checks if is a
+        if (isTypeToken(peek().type)) {
+            // È una variabile o una funzione?
+            // Usiamo il lookahead: se dopo Tipo + Nome c'è '(', è una funzione
+            if (peeknNext(2).type == TokenType::L_PAREN) {
+                members.push_back(parseFunctionDecl());
+            } else {
+                members.push_back(parseVarDecl());
+            }
+        } else {
+            error(peek(), "Only variable or function declarations are allowed inside a class.");
+            synchronize(); // Recupero dagli errori
+        }
+    }
+
+    consume(TokenType::DEDENT, "Expected end of class block.");
+    return makeStmt<ClassDeclStmt>(name, std::move(members));
+}
 Stmt Parser::parseIfStmt() {
     Token keyword= consume(TokenType::KW_IF, "Expected 'if' for if parsing");
 
@@ -279,6 +310,74 @@ Expr Parser::parsePrecedence(Precedence precedence) {
 Expr Parser::parseLiteral(Token token) {
     // Token holds INT, FLOAT, STRING, CHAR, TRUE, FALSE or NULL
     return makeExpr<LiteralExpr>(token);
+}
+Expr Parser::parseFormatString(Token token) {
+    std::string raw = token.asString();
+    size_t lastPos = 0;
+    size_t pos = 0;
+
+    Expr result;
+    bool first = true;
+
+    // Helper per creare un LiteralExpr di tipo stringa al volo
+    auto makeStringLiteral = [&](std::string text) {
+        return makeExpr<LiteralExpr>(Token(TokenType::STRING_LITERAL, text, token.line, token.column));
+    };
+
+    while ((pos = raw.find('{', lastPos)) != std::string::npos) {
+        // 1. Parte testuale prima della {
+        if (pos > lastPos) {
+            Expr textPart = makeStringLiteral(raw.substr(lastPos, pos - lastPos));
+            if (first) { result = std::move(textPart); first = false; }
+            else { result = makeExpr<BinaryExpr>(std::move(result), Token(TokenType::OP_PLUS, "+", token.line, token.column), std::move(textPart)); }
+        }
+
+        // 2. Trova la chiusura }
+        size_t endPos = raw.find('}', pos);
+        if (endPos == std::string::npos) {
+            error(token, "Unterminated expression inside format string.");
+            throw ParseError();
+        }
+
+        // 3. Estrai e parsa l'espressione tra { }
+        std::string exprCode = raw.substr(pos + 1, endPos - pos - 1);
+        Lexer subLexer(exprCode);
+        auto subTokens = subLexer.tokenize();
+        if (!subTokens.empty() && subTokens.back().type == TokenType::END_OF_FILE) subTokens.pop_back();
+
+        Parser subParser(subTokens);
+        Expr exprPart = subParser.parseExpression();
+
+        // 4. Concatena l'espressione al risultato
+        if (first) { result = std::move(exprPart); first = false; }
+        else {
+            result = makeExpr<BinaryExpr>(
+                std::move(result),
+                Token(TokenType::OP_PLUS, "+", token.line, token.column),
+                std::move(exprPart)
+            );
+        }
+
+        lastPos = endPos + 1;
+    }
+
+    // The last piece of text after last '}'
+    if (lastPos < raw.length()) {
+        Expr lastText = makeStringLiteral(raw.substr(lastPos));
+        if (first) { result = std::move(lastText); }
+        else {
+            result = makeExpr<BinaryExpr>(
+                std::move(result),
+                Token(TokenType::OP_PLUS, "+", token.line, token.column),
+                std::move(lastText)
+            );
+        }
+    }
+
+    // f" " returns empty string
+    if (first) return makeStringLiteral("");
+
+    return result;
 }
 Expr Parser::parseVariable(Token token) {
     // Token holds the IDENTIFIER
@@ -413,7 +512,6 @@ Parser::NudHandlerMethod Parser::getNudHandler(TokenType type) const {
         case TokenType::CHAR_LITERAL:
         case TokenType::STRING_LITERAL:
         case TokenType::RAW_STRING_LITERAL:
-        case TokenType::FORMAT_STRING_LITERAL:
         case TokenType::KW_TRUE:
         case TokenType::KW_FALSE:
         case TokenType::KW_NULL: return &Parser::parseLiteral;
@@ -423,6 +521,7 @@ Parser::NudHandlerMethod Parser::getNudHandler(TokenType type) const {
         case TokenType::OP_MINUS: case TokenType::OP_PLUS:
         case TokenType::OP_NOT: case TokenType::OP_TILDE:
         case TokenType::OP_INC: case TokenType::OP_DEC: return &Parser::parseUnary;
+        case TokenType::FORMAT_STRING_LITERAL: return &Parser::parseFormatString;
 
         default: return nullptr;
     }

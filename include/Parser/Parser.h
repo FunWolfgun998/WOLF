@@ -4,6 +4,7 @@
 #include <string>
 #include <stdexcept>
 #include "../Lexer/Token.h"
+#include "../Lexer/Lexer.h"
 #include "../AST/ASTNodes.h"
 
 /*
@@ -43,15 +44,15 @@ private:
     Stmt parseStatement();
     BlockStmt parseBlock(); // Handle Indent and Dedent
     Stmt parseVarDecl();
-    Stmt parseFunctionDecl();
-    Stmt parseStructDecl();
     Stmt parseIfStmt();
     Stmt parseWhileStmt();
     Stmt parseForStmt();
+    Stmt parseFunctionDecl();
+    Stmt parseStructDecl();
+    Stmt parseClassDecl();
     Stmt parseReturnStmt();
     Stmt parseBreakStmt();
     Stmt parseContinueStmt();
-
 
     // --- 2. EXPRESSION PARSERS (Node Builders) ---
     Expr parseExpression();
@@ -59,6 +60,7 @@ private:
     Expr parsePrecedence(Precedence precedence);
 
     Expr parseLiteral(Token token);
+    Expr parseFormatString(Token token);
     Expr parseVariable(Token token);
     Expr parseGrouping(Token openingParen);
     Expr parseArrayLiteral(Token openingBracket);

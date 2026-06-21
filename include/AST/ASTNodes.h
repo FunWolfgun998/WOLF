@@ -110,6 +110,11 @@ struct StructDeclStmt {
     std::vector<Stmt> fields; // Fields of the struct (must be VarDeclStmt)
 };
 
+struct ClassDeclStmt {
+    Token name;
+    std::vector<Stmt> members; // VarDeclStmt and FunctionDeclStmt
+};
+
 // functionCall(arg1, arg2)
 struct CallExpr {
     Expr callee;                 // Expression being called (often a VariableExpr)

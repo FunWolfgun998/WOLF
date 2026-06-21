@@ -73,3 +73,5 @@
 | 62 | `COMMA` | `,` |
 | **Identificatori** | | |
 | 63 | `IDENTIFIER` | `myVar`, `functionName` |
+
+Ti allego ora i file sorgente crea memorie riguardo il progetto,
