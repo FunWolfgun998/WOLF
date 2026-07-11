@@ -3,10 +3,9 @@
 #include <string>
 #include <utility>
 #include <variant>
-#include <cstdint>
 #include "TokenType.h"
 
-using LiteralValue = std::variant<std::monostate, long long, double, std::string, uint32_t>;
+using LiteralValue = std::variant<std::monostate, long long, double, std::string, char>;
 std::string tokenTypeToString(TokenType type);
 
 struct Token {
@@ -45,15 +44,11 @@ struct Token {
         return "";
     }
 
-    uint32_t asChar() const {
-        if (auto p = std::get_if<uint32_t>(&literalValue)) return *p;
+    char asChar() const {
+        if (auto p = std::get_if<char>(&literalValue)) return *p;
         return '\0';
     }
 
-    uint32_t asUnicode() const {
-        if (auto p = std::get_if<uint32_t>(&literalValue)) return *p;
-        return 0;
-    }
     // Debug
     std::string toString() const;
 };

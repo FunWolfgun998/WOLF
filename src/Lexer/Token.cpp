@@ -2,7 +2,7 @@
 
 std::string tokenTypeToString(TokenType type) {
     switch (type) {
-        case TokenType::END_OF_FILE: return "END_OF_FILE";
+        case TokenType::END_OF_FILE: return "EOF";
         case TokenType::ERROR: return "ERROR";
         case TokenType::UNKNOWN: return "UNKNOWN";
         case TokenType::NEWLINE: return "NEWLINE";
@@ -85,28 +85,6 @@ std::string tokenTypeToString(TokenType type) {
     }
 }
 
-std::string unicodeToUtf8(uint32_t cp) {
-    std::string result;
-    if (cp <= 0x7F) {
-        result += static_cast<char>(cp);
-    } else if (cp <= 0x7FF) {
-        result += static_cast<char>(0xC0 | ((cp >> 6) & 0x1F));
-        result += static_cast<char>(0x80 | (cp & 0x3F));
-    } else if (cp <= 0xFFFF) {
-        result += static_cast<char>(0xE0 | ((cp >> 12) & 0x0F));
-        result += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-        result += static_cast<char>(0x80 | (cp & 0x3F));
-    } else if (cp <= 0x10FFFF) {
-        result += static_cast<char>(0xF0 | ((cp >> 18) & 0x07));
-        result += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
-        result += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-        result += static_cast<char>(0x80 | (cp & 0x3F));
-    } else {
-        result += "?"; // Invalid code point
-    }
-    return result;
-}
-
 std::string Token::toString() const {
     // Pulizia per la stampa
     std::string cleanLexeme = lexeme;
@@ -128,9 +106,8 @@ std::string Token::toString() const {
         out += ", FloatVal: " + std::to_string(std::get<double>(literalValue));
     } else if (std::holds_alternative<std::string>(literalValue)) {
         out += ", StrVal: \"" + std::get<std::string>(literalValue) + "\"";
-    } else if (std::holds_alternative<uint32_t>(literalValue)) {
-        uint32_t cp = std::get<uint32_t>(literalValue);
-        out += ", CharVal: " + unicodeToUtf8(cp) + " (U+" + std::to_string(cp) + ")";
+    } else if (std::holds_alternative<char>(literalValue)) {
+        out += std::string(", CharVal: '") + std::get<char>(literalValue) + "'";
     }
     return out;
 }

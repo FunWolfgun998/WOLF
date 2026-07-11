@@ -11,7 +11,6 @@
 #include <memory>
 #include "../include/AST/ASTdec.h"
 #include "../include/AST/ASTNodes.h"
-#include "../include/Lexer/Token.h"
 
 
 
@@ -23,6 +22,7 @@ private:
     template<typename Type>
     //
     void printBranch(const Type& branchTypeVariant, bool isLastBranch, const std::string& labelBranch = "") {
+        out << "\n";
         out << currentPrefix;
         out << (isLastBranch ? "└── " : "├── ");
         if (!labelBranch.empty()) out << labelBranch <<": ";

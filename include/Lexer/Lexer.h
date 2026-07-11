@@ -44,8 +44,6 @@ private:
     void string();
     void rawString();
     void formatString();
-
-    uint32_t decodeUtf8();
     void charLiteral();
     void number();
     void identifier();
@@ -59,5 +57,4 @@ private:
     void addToken(TokenType type);
     void addIdentifierToken(TokenType type, int id);
     void addToken(TokenType type, LiteralValue value);
-
 };

@@ -6,16 +6,16 @@
 // -- Expressions (from ExprVariant) --
 void ASTPrinter::operator()(const std::unique_ptr<LiteralExpr>& node) {
     // Print the literal value exactly as it was written in the code
-    out << "LiteralExpr(" << node->value.lexeme << ")\n";
+    out << "LiteralExpr(" << node->value.lexeme << ")";
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<VariableExpr>& node) {
     // Print the variable name
-    out << "VariableExpr(" << node->name.lexeme << ")\n";
+    out << "VariableExpr(" << node->name.lexeme << ")";
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<BinaryExpr>& node) {
-    out << "BinaryExpr(Op: " << node->op.lexeme << ")\n";
+    out << "BinaryExpr(Op: " << node->op.lexeme << ")";
     // Visit left branch (not the last child)
     printBranch(node->left.as, false, "Left");
     // Visit right branch (as the last child)
@@ -25,20 +25,20 @@ void ASTPrinter::operator()(const std::unique_ptr<BinaryExpr>& node) {
 void ASTPrinter::operator()(const std::unique_ptr<UnaryExpr>& node) {
     // Unary only has one child, so it's always the last
     if (node->isPostfix) {
-        out << "PostfixUnaryExpr(Op: " << node->op.lexeme << ")\n";
+        out << "PostfixUnaryExpr(Op: " << node->op.lexeme << ")";
         printBranch(node->operand.as, true, "Left");
     } else {
-        out << "PrefixUnaryExpr(Op: " << node->op.lexeme << ")\n";
+        out << "PrefixUnaryExpr(Op: " << node->op.lexeme << ")";
         printBranch(node->operand.as, true, "Right");
     }
 }
 void ASTPrinter::operator()(const std::unique_ptr<GroupingExpr>& node) {
-    out << "GroupingExpr\n";
+    out << "GroupingExpr";
     printBranch(node->expression.as, true, "Expression");
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<CallExpr>& node) {
-    out << "CallExpr\n";
+    out << "CallExpr";
 
     // The callee is only the 'last' branch if there are no arguments
     bool noArgs = node->arguments.empty();
@@ -52,16 +52,16 @@ void ASTPrinter::operator()(const std::unique_ptr<CallExpr>& node) {
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<MemberAccessExpr>& node) {
-    out << "MemberAccessExpr(Field: " << node->member.lexeme << ")\n";
+    out << "MemberAccessExpr(Field: " << node->member.lexeme << ")";
     printBranch(node->accessed.as, true, "Object");
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<ArrayLiteralExpr>& node) {
-    out << "ArrayLiteralExpr\n";
+    out << "ArrayLiteralExpr";
 
     // Empty array
     if (node->elements.empty()) {
-        out << currentPrefix << "└── (Empty Array)\n";
+        out << currentPrefix << "└── (Empty Array)";
         return;
     }
 
@@ -74,19 +74,19 @@ void ASTPrinter::operator()(const std::unique_ptr<ArrayLiteralExpr>& node) {
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<ArrayAccessExpr>& node) {
-    out << "ArrayAccessExpr\n";
+    out << "ArrayAccessExpr";
     printBranch(node->array.as, false, "Array");
     printBranch(node->index.as, true, "Index");
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<TernaryExpr>& node) {
-    out << "TernaryExpr\n";
+    out << "TernaryExpr";
     printBranch(node->condition.as, false, "Condition");
     printBranch(node->trueBranch.as, false, "TrueBranch");
     printBranch(node->falseBranch.as, true, "FalseBranch");
 }
 void ASTPrinter::operator()(const std::unique_ptr<RangeExpr>& node) {
-    out << "RangeExpr\n";
+    out << "RangeExpr";
     printBranch(node->start.as, false, "Start");
     printBranch(node->end.as, true, "End");
 }
@@ -94,12 +94,12 @@ void ASTPrinter::operator()(const std::unique_ptr<RangeExpr>& node) {
 // -- Statements (from StmtVariant) --
 
 void ASTPrinter::operator()(const std::unique_ptr<ExpressionStmt>& node) {
-    out << "ExpressionStmt\n";
+    out << "ExpressionStmt";
     printBranch(node->expression.as, true, "Expression");
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<VarDeclStmt>& node) {
-    out << "VarDeclStmt(Type: " << node->type.lexeme << ", Name: " << node->name.lexeme << ")\n";
+    out << "VarDeclStmt(Type: " << node->type.lexeme << ", Name: " << node->name.lexeme << ")";
 
     // Null safety check: variables might not have an initializer (e.g. `int x;`)
     if (node->initializer != nullptr) {
@@ -108,7 +108,7 @@ void ASTPrinter::operator()(const std::unique_ptr<VarDeclStmt>& node) {
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<BlockStmt>& node) {
-    out << "BlockStmt\n";
+    out << "BlockStmt";
     for (size_t i = 0; i < node->statements.size(); ++i) {
         bool isLast = (i == node->statements.size() - 1);
         printBranch(node->statements[i].as, isLast);
@@ -116,7 +116,7 @@ void ASTPrinter::operator()(const std::unique_ptr<BlockStmt>& node) {
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<IfStmt>& node) {
-    out << "IfStmt\n";
+    out << "IfStmt";
 
     bool hasElifs = !node->elifBranches.empty();
     bool hasElse = node->elseBranch != nullptr;
@@ -130,7 +130,7 @@ void ASTPrinter::operator()(const std::unique_ptr<IfStmt>& node) {
     for(size_t j = 0; j < node->elifBranches.size(); ++j) {
         bool isLastElif = (j == node->elifBranches.size() - 1) && !hasElse;
 
-        out << currentPrefix << (isLastElif ? "└── " : "├── ") << "ElifBranch[" << j << "]\n";
+        out << currentPrefix << (isLastElif ? "└── " : "├── ") << "ElifBranch[" << j << "]";
 
         std::string oldPrefix = currentPrefix;
         currentPrefix += (isLastElif ? "    " : "│   ");
@@ -148,7 +148,7 @@ void ASTPrinter::operator()(const std::unique_ptr<IfStmt>& node) {
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<WhileStmt>& node) {
-    out << "WhileStmt\n";
+    out << "WhileStmt";
     printBranch(node->condition.as, false, "Condition");
 
     printBranch(node->body.as, true, "Body");
@@ -159,7 +159,7 @@ void ASTPrinter::operator()(const std::unique_ptr<ReturnStmt>& node) {
     if (node->value != nullptr) {
         printBranch(node->value->as, true, "Value");
     } else {
-        out <<"\n"<< currentPrefix << "└── (Void Return)\n";
+        out <<"\n"<< currentPrefix << "└── (Void Return)";
     }
 }
 
@@ -172,45 +172,38 @@ void ASTPrinter::operator()(const std::unique_ptr<ContinueStmt>& node) {
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<ForStmt>& node) {
-    out << "ForStmt(Iterator: " << node->iteratorVar.lexeme << ")\n";
+    out << "ForStmt(Iterator: " << node->iteratorVar.lexeme << ")";
     printBranch(node->iterable.as, false, "iterable");
     printBranch(node->body.as, true, "Body");
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<FunctionDeclStmt>& node) {
-
     out << "FunctionDeclStmt(ReturnType: " << node->returnType.lexeme
-        << ", Name: " << node->name.lexeme << ")\n";
+        << ", Name: " << node->name.lexeme << ")";
 
-    if (!node->parameters.empty()) {
-        out << currentPrefix << "├── Parameters\n";
-
-        std::string oldPrefix = currentPrefix;
-        currentPrefix += "│   ";
-
+    // I parametri rimangono un vettore di struct semplici, li stampiamo qui
+    out << currentPrefix << "├── Parameters";
+    std::string pPrefix = currentPrefix + "│   ";
+    if (node->parameters.empty()) {
+        out << "\n" << pPrefix << "└── (None)";
+    } else {
         for (size_t i = 0; i < node->parameters.size(); ++i) {
             bool isLast = (i == node->parameters.size() - 1);
-
-            out << currentPrefix << (isLast ? "└── " : "├── ")
-                << node->parameters[i].type.lexeme << " " << node->parameters[i].name.lexeme << "\n";
+            out << "\n" << pPrefix << (isLast ? "└── " : "├── ")
+                << node->parameters[i].type.lexeme << " " << node->parameters[i].name.lexeme;
 
             if (node->parameters[i].defaultValue != nullptr) {
-                std::string paramPrefix = currentPrefix;
-                currentPrefix += (isLast ? "    " : "│   ");
-                printBranch(node->parameters[i].defaultValue->as, true, "Default");
-
-                currentPrefix = paramPrefix;
+                out << " (Default: ";
+                std::visit(*this, node->parameters[i].defaultValue->as);
+                out << ")";
             }
         }
-        currentPrefix = oldPrefix;
     }
-
-    // 3. Il corpo della funzione è sempre l'ultimo ramo della FunctionDecl
     printBranch(node->body.as, true, "Body");
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<StructDeclStmt>& node) {
-    out << "StructDeclStmt(Name: " << node->name.lexeme << ")\n";
+    out << "StructDeclStmt(Name: " << node->name.lexeme << ")";
 
     // Dato che fields è ora std::vector<Stmt>, usiamo printBrach per ognuno!
     if (node->fields.empty()) {
