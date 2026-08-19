@@ -1,13 +1,17 @@
 #include "../../include/Lexer/Token.h"
 
+#include "../../include/Lexer/Token.h"
+
 std::string tokenTypeToString(TokenType type) {
     switch (type) {
         case TokenType::END_OF_FILE: return "EOF";
         case TokenType::ERROR: return "ERROR";
         case TokenType::UNKNOWN: return "UNKNOWN";
+
         case TokenType::NEWLINE: return "NEWLINE";
         case TokenType::INDENT: return "INDENT";
         case TokenType::DEDENT: return "DEDENT";
+
         case TokenType::INT_LITERAL: return "INT_LITERAL";
         case TokenType::FLOAT_LITERAL: return "FLOAT_LITERAL";
         case TokenType::HEX_LITERAL: return "HEX_LITERAL";
@@ -15,15 +19,25 @@ std::string tokenTypeToString(TokenType type) {
         case TokenType::OCT_LITERAL: return "OCT_LITERAL";
         case TokenType::CHAR_LITERAL: return "CHAR_LITERAL";
         case TokenType::STRING_LITERAL: return "STRING_LITERAL";
+        case TokenType::RAW_STRING_LITERAL: return "RAW_STRING";
+        case TokenType::FORMAT_STRING_LITERAL: return "FORMAT_STRING";
+
         case TokenType::KW_INT: return "KW_INT";
         case TokenType::KW_FLOAT: return "KW_FLOAT";
         case TokenType::KW_CHAR: return "KW_CHAR";
         case TokenType::KW_STRING: return "KW_STRING";
         case TokenType::KW_VOID: return "KW_VOID";
         case TokenType::KW_BOOL: return "KW_BOOL";
+
+        case TokenType::KW_PUBLIC: return "KW_PUBLIC";
+        case TokenType::KW_PRIVATE: return "KW_PRIVATE";
+        case TokenType::KW_PROTECTED: return "KW_PROTECTED";
+        case TokenType::KW_THIS: return "KW_THIS";
+        case TokenType::KW_EXTENDS: return "KW_EXTENDS";
+
         case TokenType::KW_IF: return "KW_IF";
         case TokenType::KW_ELSE: return "KW_ELSE";
-        case TokenType::KW_ELIF: return "KW_ELIrF";
+        case TokenType::KW_ELIF: return "KW_ELIF";
         case TokenType::KW_WHILE: return "KW_WHILE";
         case TokenType::KW_FOR: return "KW_FOR";
         case TokenType::KW_IN: return "KW_IN";
@@ -35,6 +49,7 @@ std::string tokenTypeToString(TokenType type) {
         case TokenType::KW_NULL: return "KW_NULL";
         case TokenType::KW_TRUE: return "KW_TRUE";
         case TokenType::KW_FALSE: return "KW_FALSE";
+
         case TokenType::OP_SHIFT_LEFT: return "OP_SHIFT_LEFT";
         case TokenType::OP_SHIFT_RIGHT: return "OP_SHIFT_RIGHT";
         case TokenType::OP_SHIFT_LEFT_ASS: return "OP_SHIFT_LEFT_ASS";
@@ -55,6 +70,7 @@ std::string tokenTypeToString(TokenType type) {
         case TokenType::OP_XOR_ASS: return "OP_XOR_ASS";
         case TokenType::RANGE_OP: return "RANGE_OP";
         case TokenType::ARROW: return "ARROW";
+
         case TokenType::OP_BIT_AND: return "OP_BIT_AND";
         case TokenType::OP_BIT_OR: return "OP_BIT_OR";
         case TokenType::OP_PLUS: return "OP_PLUS";
@@ -67,20 +83,21 @@ std::string tokenTypeToString(TokenType type) {
         case TokenType::OP_NOT: return "OP_NOT";
         case TokenType::OP_LESS: return "OP_LESS";
         case TokenType::OP_GRT: return "OP_GRT";
+        case TokenType::OP_TILDE: return "OP_TILDE";
+        case TokenType::OP_QUESTION: return "OP_QUESTION";
+        case TokenType::OP_INC: return "INCREMENT";
+        case TokenType::OP_DEC: return "DECREMENT";
+
         case TokenType::DOT: return "DOT";
         case TokenType::COLON: return "COLON";
         case TokenType::L_PAREN: return "L_PAREN";
         case TokenType::R_PAREN: return "R_PAREN";
-        case TokenType::COMMA: return "COMMA";
-        case TokenType::IDENTIFIER: return "IDENTIFIER";
-        case TokenType::RAW_STRING_LITERAL: return "RAW_STRING";
-        case TokenType::FORMAT_STRING_LITERAL: return "FORMAT_STRING";
         case TokenType::L_BRACKET: return "L_BRACKET";
         case TokenType::R_BRACKET: return "R_BRACKET";
-        case TokenType::OP_INC: return "INCREMENT";
-        case TokenType::OP_DEC: return "DECREMENT";
-        case TokenType::OP_QUESTION: return "QUESTION";
-        case TokenType::OP_TILDE: return "TILDE";
+        case TokenType::COMMA: return "COMMA";
+
+        case TokenType::IDENTIFIER: return "IDENTIFIER";
+
         default: return "UNKNOWN";
     }
 }

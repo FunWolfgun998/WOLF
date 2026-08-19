@@ -23,6 +23,7 @@ enum class TokenType {
 
     // Keywords (Tipi)
     KW_INT, KW_FLOAT, KW_CHAR, KW_STRING, KW_VOID, KW_BOOL,
+    KW_PUBLIC, KW_PRIVATE, KW_PROTECTED, KW_THIS, KW_EXTENDS,
 
     // Keywords (Controllo Flusso)
     KW_IF, KW_ELSE, KW_ELIF,

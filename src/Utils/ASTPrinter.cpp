@@ -215,3 +215,22 @@ void ASTPrinter::operator()(const std::unique_ptr<StructDeclStmt>& node) {
         }
     }
 }
+
+void ASTPrinter::operator()(const std::unique_ptr<ClassDeclStmt>& node) {
+    out << "ClassDeclStmt(Name: " << node->name.lexeme;
+    if (node->superclass.has_value()) {
+        out << ", Extends: " << node->superclass->lexeme;
+    }
+    out << ")\n";
+
+    for (size_t i = 0; i < node->members.size(); ++i) {
+        bool isLast = (i == node->members.size() - 1);
+        std::string accessStr = (node->members[i].access == AccessModifier::PUBLIC)    ? "public" :
+                                (node->members[i].access == AccessModifier::PROTECTED) ? "protected" : "private";
+
+        printBranch(node->members[i].declaration.as, isLast, "Member[" + accessStr + "]");
+    }
+}
+void ASTPrinter::operator()(const std::unique_ptr<ThisExpr>& node) {
+    out << "ThisExpr\n";
+}

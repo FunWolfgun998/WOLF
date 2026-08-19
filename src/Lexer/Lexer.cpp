@@ -37,8 +37,7 @@ char Lexer::peekNext(int n) const {
 bool Lexer::match(char expected) {
     if (isAtEnd()) return false;
     if (source[current] != expected) return false;
-    current++;
-    column++;
+    advance();
     return true;
 }
 
@@ -85,7 +84,13 @@ std::vector<Token> Lexer::tokenize() {
         startColumn = column;
         scanToken();
     }
-
+    // Synthesize a NEWLINE only if the file ends with a token that needs termination
+    if (!tokens.empty() &&
+        tokens.back().type != TokenType::NEWLINE &&
+        tokens.back().type != TokenType::DEDENT)
+    {
+        tokens.emplace_back(TokenType::NEWLINE, "\n", line, column);
+    }
     // Auto-emit DEDENT tokens at the end of the file to close open blocks
     while (indentStack.back() > 0) {
         indentStack.pop_back();
@@ -438,6 +443,11 @@ void Lexer::identifier() {
 
         case hash("struct"): type = TokenType::KW_STRUCT; break;
         case hash("class"): type = TokenType::KW_CLASS; break;
+        case hash("public"):    type = TokenType::KW_PUBLIC; break;
+        case hash("private"):   type = TokenType::KW_PRIVATE; break;
+        case hash("protected"): type = TokenType::KW_PROTECTED; break;
+        case hash("this"):      type = TokenType::KW_THIS; break;
+        case hash("extends"): type = TokenType::KW_EXTENDS; break;
 
         case hash("true"): type = TokenType::KW_TRUE; break;
         case hash("false"): type = TokenType::KW_FALSE; break;

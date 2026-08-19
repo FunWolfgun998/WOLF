@@ -3,6 +3,17 @@
 #include "ASTdec.h"
 #include "../Lexer/Token.h"
 
+enum class AccessModifier {
+    PUBLIC,
+    PRIVATE,
+    PROTECTED
+};
+// Wraps a declaration with its visibility modifier inside a class
+struct ClassMember {
+    AccessModifier access;
+    Stmt declaration; // Holds VarDeclStmt or FunctionDeclStmt
+};
+
 // --- EXPRESSION NODES ---
 struct LiteralExpr {
     Token value; // Holds the literal value (int, float, string, etc.)
@@ -38,6 +49,12 @@ struct GroupingExpr {
     Token openingParen; // The '(' token for debug/error tracking
     Expr expression;
 };
+
+// Represents the 'this' keyword referencing the current class instance
+struct ThisExpr {
+    Token keyword; // The 'this' token for location tracking
+};
+
 
 // --- STATEMENT NODES ---
 
@@ -110,9 +127,11 @@ struct StructDeclStmt {
     std::vector<Stmt> fields; // Fields of the struct (must be VarDeclStmt)
 };
 
+// class Dog : Animal:
 struct ClassDeclStmt {
     Token name;
-    std::vector<Stmt> members; // VarDeclStmt and FunctionDeclStmt
+    std::optional<Token> superclass;   // Optional base class for inheritance
+    std::vector<ClassMember> members;  // List of fields and methods
 };
 
 // functionCall(arg1, arg2)

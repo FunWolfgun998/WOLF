@@ -75,6 +75,7 @@ public:
     void operator()(const std::unique_ptr<ForStmt>& node);
     void operator()(const std::unique_ptr<FunctionDeclStmt>& node);
     void operator()(const std::unique_ptr<StructDeclStmt>& node);
-
+    void operator()(const std::unique_ptr<ThisExpr>& node);
+    void operator()(const std::unique_ptr<ClassDeclStmt>& node);
 };
 

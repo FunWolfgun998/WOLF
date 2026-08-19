@@ -58,9 +58,9 @@ private:
     Expr parseExpression();
     // Parses an expression stopping when it hits an operator with lower precedence
     Expr parsePrecedence(Precedence precedence);
-
     Expr parseLiteral(Token token);
     Expr parseFormatString(Token token);
+    Expr parseThis(Token token);
     Expr parseVariable(Token token);
     Expr parseGrouping(Token openingParen);
     Expr parseArrayLiteral(Token openingBracket);

@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <variant>
+#include <optional>
 
 // Forward declarations of AST nodes to resolve circular dependencies
 struct LiteralExpr;
@@ -25,6 +26,7 @@ struct ForStmt;
 struct FunctionDeclStmt;
 struct StructDeclStmt;
 struct ClassDeclStmt;
+struct ThisExpr;
 struct ReturnStmt;
 struct BreakStmt;
 struct ContinueStmt;
@@ -43,7 +45,8 @@ using ExprVariant = std::variant<
     std::unique_ptr<MemberAccessExpr>,
     std::unique_ptr<ArrayAccessExpr>,
     std::unique_ptr<ArrayLiteralExpr>,
-    std::unique_ptr<TernaryExpr>
+    std::unique_ptr<TernaryExpr>,
+    std::unique_ptr<ThisExpr>
 >;
 
 // Wrapper struct for an expression.

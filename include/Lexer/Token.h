@@ -3,9 +3,10 @@
 #include <string>
 #include <utility>
 #include <variant>
+#include <cstdint>
 #include "TokenType.h"
 
-using LiteralValue = std::variant<std::monostate, long long, double, std::string, char>;
+using LiteralValue = std::variant<std::monostate, long long, double, std::string, char, uint32_t> ;
 std::string tokenTypeToString(TokenType type);
 
 struct Token {

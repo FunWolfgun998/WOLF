@@ -40,6 +40,7 @@ Stmt Parser::parseStatement() {
     if (check(TokenType::KW_RETURN)) return parseReturnStmt();
     if (check(TokenType::KW_BREAK)) return parseBreakStmt();
     if (check(TokenType::KW_CONTINUE)) return parseContinueStmt();
+    if (check(TokenType::KW_CLASS)) return parseClassDecl();
     // Fallback: Expression Statement (e.g., "x = 5" or "functionCall()")
     Expr expr = parseExpression();
 
@@ -68,8 +69,6 @@ BlockStmt Parser::parseBlock() {
     return BlockStmt{std::move(statements)};
 }
 Stmt Parser::parseVarDecl() {
-
-    // Consume the type token internally
     if (!isTypeToken(peek().type)) {
         error(peek(), "Expected type name for Variable declaration parsing.");
         throw ParseError();
@@ -77,19 +76,21 @@ Stmt Parser::parseVarDecl() {
 
     Token typeVar = advance();
 
-    // Consume the identifier
+    // Support array types (e.g. int[], string[][])
+    while (match(TokenType::L_BRACKET)) {
+        consume(TokenType::R_BRACKET, "Expected ']' after '[' in array type declaration.");
+        typeVar.lexeme += "[]"; // Extend the type representation
+    }
+
+    // Now consume the variable name
     Token nameVariable = consume(TokenType::IDENTIFIER, "Expected variable name.");
 
     std::unique_ptr<Expr> initializer = nullptr;
-
-    // Optional initialization (e.g., "= 10")
     if (match(TokenType::OP_ASSIGN)) {
         initializer = std::make_unique<Expr>(parseExpression());
     }
 
-    // Statement terminator
     consume(TokenType::NEWLINE, "Expected newline after variable declaration.");
-
     return makeStmt<VarDeclStmt>(typeVar, nameVariable, std::move(initializer));
 }
 Stmt Parser::parseFunctionDecl() {
@@ -155,37 +156,56 @@ Stmt Parser::parseStructDecl() {
     // Return the completed struct declaration
     return makeStmt<StructDeclStmt>(nameToken, std::move(fields));
 }
-Stmt Parser::parseClassDecl()
-{
-    Token keyword= consume(TokenType::KW_CLASS, "Expected 'class' for class parsing");
-    Token name = consume(TokenType::IDENTIFIER, "Expected class name.");
-    consume(TokenType::COLON, "Expected ':' after class name.");
-    consume(TokenType::NEWLINE, "Expected newline.");
+Stmt Parser::parseClassDecl() {
+    consume(TokenType::KW_CLASS, "Expected 'class' keyword.");
+    Token nameToken = consume(TokenType::IDENTIFIER, "Expected class name.");
 
-    std::vector<Stmt> members;
+    // Optional Inheritance: class Dog extends Animal:
+    std::optional<Token> superclass = std::nullopt;
+    if (match(TokenType::KW_EXTENDS)) {
+        superclass = consume(TokenType::IDENTIFIER, "Expected base class name after 'extends'.");
+    }
+
+    consume(TokenType::COLON, "Expected ':' after class declaration.");
+    consume(TokenType::NEWLINE, "Expected newline after class header.");
+
+    std::vector<ClassMember> members;
     consume(TokenType::INDENT, "Expected indented block for class body.");
+
+    // Default access modifier is Private
+    AccessModifier currentAccess = AccessModifier::PRIVATE;
 
     while (!check(TokenType::DEDENT) && !isAtEnd()) {
         if (match(TokenType::NEWLINE)) continue;
+        // Access Specifiers (public:, private:, protected:)
+        if (check(TokenType::KW_PUBLIC) || check(TokenType::KW_PRIVATE) || check(TokenType::KW_PROTECTED)) {
+            Token accessTok = advance();
+            consume(TokenType::COLON, "Expected ':' after access specifier.");
+            consume(TokenType::NEWLINE, "Expected newline after access specifier.");
 
-        //Like the Parser checks if is a
+            // Map token directly to enum in a single line
+            currentAccess = (accessTok.type == TokenType::KW_PUBLIC) ? AccessModifier::PUBLIC :
+                            (accessTok.type == TokenType::KW_PROTECTED) ? AccessModifier::PROTECTED :
+                                                                          AccessModifier::PRIVATE;
+            continue;
+        }
+        // Class Members (Fields or Methods)
         if (isTypeToken(peek().type)) {
-            // È una variabile o una funzione?
-            // Usiamo il lookahead: se dopo Tipo + Nome c'è '(', è una funzione
-            if (peeknNext(2).type == TokenType::L_PAREN) {
-                members.push_back(parseFunctionDecl());
-            } else {
-                members.push_back(parseVarDecl());
-            }
+            // Lookahead check: Type + Identifier + '(' indicates a Method
+            Stmt memberDecl = (peeknNext(2).type == TokenType::L_PAREN)
+                                ? parseFunctionDecl()
+                                : parseVarDecl();
+            members.push_back(ClassMember{currentAccess, std::move(memberDecl)});
         } else {
-            error(peek(), "Only variable or function declarations are allowed inside a class.");
-            synchronize(); // Recupero dagli errori
+            error(peek(), "Only access specifiers, fields, or methods are allowed inside a class.");
+            synchronize();
         }
     }
 
     consume(TokenType::DEDENT, "Expected end of class block.");
-    return makeStmt<ClassDeclStmt>(name, std::move(members));
+    return makeStmt<ClassDeclStmt>(nameToken, superclass, std::move(members));
 }
+
 Stmt Parser::parseIfStmt() {
     Token keyword= consume(TokenType::KW_IF, "Expected 'if' for if parsing");
 
@@ -274,7 +294,7 @@ Stmt Parser::parseContinueStmt() {
     // Expect newline after continue
     consume(TokenType::NEWLINE, "Expected newline after continue.");
 
-    return makeStmt<BreakStmt>(keyword);
+    return makeStmt<ContinueStmt>(keyword);
 }
 
 // EXPRESSION PARSERS (Node Builders)
@@ -385,6 +405,10 @@ Expr Parser::parseFormatString(Token token) {
     if (first) return makeStringLiteral("");
 
     return result;
+}
+
+Expr Parser::parseThis(Token token) {
+    return makeExpr<ThisExpr>(token);
 }
 Expr Parser::parseVariable(Token token) {
     // Token holds the IDENTIFIER
@@ -529,6 +553,7 @@ Parser::NudHandlerMethod Parser::getNudHandler(TokenType type) const {
         case TokenType::OP_NOT: case TokenType::OP_TILDE:
         case TokenType::OP_INC: case TokenType::OP_DEC: return &Parser::parseUnary;
         case TokenType::FORMAT_STRING_LITERAL: return &Parser::parseFormatString;
+        case TokenType::KW_THIS: return &Parser::parseThis;
 
         default: return nullptr;
     }

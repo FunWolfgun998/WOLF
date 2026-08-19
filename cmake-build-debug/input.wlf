@@ -1,104 +1,60 @@
-// ==========================================
-// PARTE 1: SINTASSI VALIDA (Front-End Challenge)
-// ==========================================
+// --- WOLF COMPREHENSIVE TEST SUITE ---
 
-// 1. Numeri e Basi (Lexer Check)
-int dec = 42
-int hex = 0xFF
-int bin = 0b1010
-int oct = 0o77
-float p = 3.14159
-float sci = 7.98e10
-float dot_start = .5
-float dot_end = 10.
+// 1. Variables and Literals
+int id = 998
+float pi = 3.14159
+char letter = 'W'
+string greeting = f"Hello, World! ID is {id}"
 
-// 2. Ambiguità del Punto (Lexer + Parser)
-int simple_dot = 10.method()
-int range_dot = 1..10
-float complex_dot = .5.toString()
+// 2. Arrays and Ranges
+int[] numbers = [1, 2, 3, 4, 5]
+int firstNum = numbers[0]
+for i in 0..10:
+    id++
 
-// 3. Stringhe e Caratteri (Escapes & Types)
-string normal = "Wolf Lang\nVersion 1.0"
-string raw = r"C:\Users\Name\Desktop"
-string fmt = f"Value is: {dec}"
-char tab = '\t'
-char unicode = 'Ω'
+// 3. Control Flow & Ternary
+bool status = true
+string message = status ? "Active" : "Inactive"
 
-// 4. Espressioni Complesse (Pratt Parser Power)
-// Questo controlla: Postfissi, Prefissi, Aritmetica, Logica, Ternario e Assegnamenti
-bool logic = !true || (x++ * 2) >= --y << 2 && ~(a ^ b) ? true : false
-int chaining = a = b = c = 50
-int math = 1 + 2 * 3 / (4 - 5) % 6
-
-// 5. Array (Literals & Access)
-int list = [1, 2, 3, 4 + 5][0]
-int matrix = [[1, 0], [0, 1]][1][1]
-
-// 6. Strutture Controllo Flusso (Recursive Descent)
-if dec > 0:
-    int a = 1
-    while a < 10:
-        a++
-        if a == 5:
-            continue
-        elif a == 8:
-            break
-elif dec < 0:
-    return -1
+if (id == 998):
+    int o = 10
+elif (id == 89):
+    string c = "c"
 else:
-    print("Zero")
+    float z = 9.0
+    z *= id
 
-// 7. Funzioni e Parametri (Default Values)
-void fast_func(int a, float b = 3.14, string msg = "Default"):
-    for i in 0..a:
-        print(msg)
-    return
+while (id >= 45):
+    id--
+    if (id == 50):
+        break
+    else:
+        continue
 
-// 8. Structs (User Defined Types)
-struct Player:
+// 4. Structs
+struct Point:
+    int x
+    int y
+
+// 5. Classes, Inheritance, Access Modifiers, and 'this' (C++ flat style)
+class Animal:
+    private:
+    string species
+    public:
+    void setSpecies(string s):
+        this.species = s
+
+class Dog extends Animal:
+    private:
     string name
-    int score = 0
-    float health = 100.0
+    public:
+    string getName():
+        return this.name
+    void bark():
+        print("Woof!")
 
-// ==========================================
-// PARTE 2: ERRORI INTENZIONALI (Lexer & Parser Check)
-// ==========================================
+// 6. Functions with Default Parameters
+int add(int a, int b = 10):
+    return a + b
 
-// --- Errori del Lexer ---
-
-// Caratteri alieni
-@ $
-
-// Overflow (Numero troppo grande per long long)
-int overflow = 9999999999999999999999999999999999999999
-
-// Stringhe e Char malformati
-string s1 = "Dimentico la chiusura
-char c1 = 'abc'
-char c2 = ''
-char c3 = '\q'
-
-// --- Errori del Parser (Panic Mode Check) ---
-
-// Errore: Manca i due punti dopo l'if
-if true
-    print("No colon")
-
-// Errore: Operatore binario tronco
-int bug = 10 +
-
-// Errore: Parentesi non bilanciate
-int paren = (1 + 2
-
-// Errore: Indentazione Inconsistente
-if true:
-    int ok = 1
-  int error = 2
-
-// Errore: Funzione dentro una funzione (Se non lo permetti)
-void outer():
-    void inner():
-        return
-
-// Commento non chiuso (Deve scattare a fine file)
-/* Inizio ma non finisco...
+int result = add(5)
