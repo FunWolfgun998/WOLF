@@ -16,7 +16,9 @@ struct Token {
     int column;
     LiteralValue literalValue; // Variante sicura!
     int id; // for String Interning
-
+    // Empty Constructor
+    Token()
+            : type(TokenType::UNKNOWN), lexeme(""), line(0), column(0), literalValue(std::monostate{}), id(0) {}
     // Basic Constructor (std::monostate è il valore di default della variante)
     Token(TokenType type, std::string lexeme, int line, int col)
         : type(type), lexeme(std::move(lexeme)), line(line), column(col), literalValue(std::monostate{}), id(0) {}

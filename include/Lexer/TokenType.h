@@ -2,15 +2,15 @@
 #define WOLF_COMPILER_TOKENTYPE_H
 
 enum class TokenType {
-    // Speciali
+    // Special
     END_OF_FILE, ERROR, UNKNOWN,
 
-    // Struttura
+    // Structure
     NEWLINE,      // \n
     INDENT,       // Aumento rientro
     DEDENT,       // Diminuzione rientro
 
-    // Letterali
+    // Literal
     INT_LITERAL,    // 10
     FLOAT_LITERAL,  // 10.5
     HEX_LITERAL,    // 0xFF
@@ -21,11 +21,10 @@ enum class TokenType {
     RAW_STRING_LITERAL, // r""
     FORMAT_STRING_LITERAL, // f""
 
-    // Keywords (Tipi)
+    // Keywords
     KW_INT, KW_FLOAT, KW_CHAR, KW_STRING, KW_VOID, KW_BOOL,
     KW_PUBLIC, KW_PRIVATE, KW_PROTECTED, KW_THIS, KW_EXTENDS,
 
-    // Keywords (Controllo Flusso)
     KW_IF, KW_ELSE, KW_ELIF,
     KW_WHILE, KW_FOR, KW_IN,
     KW_RETURN, KW_BREAK, KW_CONTINUE,
@@ -33,7 +32,7 @@ enum class TokenType {
     KW_NULL, KW_TRUE, KW_FALSE,
 
 
-    // Operatori Doppi (Priorità Alta)
+    // Double OP
     OP_SHIFT_LEFT,  // <<
     OP_SHIFT_RIGHT, // >>
     OP_SHIFT_LEFT_ASS,  // <<=
@@ -53,9 +52,9 @@ enum class TokenType {
     OP_OR_ASS,      // |=
     OP_XOR_ASS,     // ^=
     RANGE_OP,       // ..
-    ARROW,          // -> (Opzionale, utile per return type)
+    ARROW,          // ->
 
-    // Operatori Singoli
+    // Single OP
     OP_BIT_AND,     // &
     OP_BIT_OR,      // |
     OP_PLUS,        // +
@@ -73,7 +72,7 @@ enum class TokenType {
     OP_INC,      // ++
     OP_DEC,      // --
 
-    // Punteggiatura
+    // Punctuation
     DOT,            // .
     COLON,          // :
     L_PAREN,        // (
@@ -82,7 +81,7 @@ enum class TokenType {
     R_BRACKET,      // ]
     COMMA,          // ,
 
-    // Identificatori
+    // Identifiers
     IDENTIFIER      // myVar
 };
 

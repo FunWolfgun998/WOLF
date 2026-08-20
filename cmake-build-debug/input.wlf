@@ -1,60 +1,185 @@
-// --- WOLF COMPREHENSIVE TEST SUITE ---
+// ============================================================================
+// WOLF FULL SEMANTIC VALIDATION TEST SUITE
+// ============================================================================
 
-// 1. Variables and Literals
-int id = 998
-float pi = 3.14159
-char letter = 'W'
-string greeting = f"Hello, World! ID is {id}"
+// 1. Primitive variable declarations and implicit widening
+int validInt = 100
+float validFloat = 3.14
+char validChar = 'W'
+bool validBool = true
+string validStr = "Wolf Language"
+float intPromotedToFloat = 42
 
-// 2. Arrays and Ranges
-int[] numbers = [1, 2, 3, 4, 5]
-int firstNum = numbers[0]
-for i in 0..10:
-    id++
+// [ERROR]: Type mismatch in variable initialization
+int err_typeMismatch = "This is a string, not an int"
+bool err_numToBool = 100
 
-// 3. Control Flow & Ternary
-bool status = true
-string message = status ? "Active" : "Inactive"
+// 2. Variable Scope, Re-definition and Undeclared lookups
+int globalCounter = 10
 
-if (id == 998):
-    int o = 10
-elif (id == 89):
-    string c = "c"
-else:
-    float z = 9.0
-    z *= id
+// Valid local variable and shadowing inside block
+if (globalCounter > 0):
+    int globalCounter = 50
+    int localOnly = 20
 
-while (id >= 45):
-    id--
-    if (id == 50):
+// [ERROR]: Variable declared inside if-block is out of scope here
+int err_outOfScope = localOnly
+
+// [ERROR]: Redeclaring an identifier in the same scope block
+int duplicateVar = 1
+int duplicateVar = 2
+
+// [ERROR]: Using an identifier that has never been declared
+undeclaredVariable = 500
+
+// 3. L-Values and Assignability
+validInt = 200
+
+// [ERROR]: Assigning to non-assignable expressions (Literals / Binary sums)
+5 = 10
+(validInt + 10) = 50
+
+// [ERROR]: Increment and decrement on non-LValue literals
+5++
+--10
+
+// 4. Arrays, Element Type Homogeneity, and Subscripts
+int[] validArray = [1, 2, 3, 4, 5]
+int firstElement = validArray[0]
+validArray[1] = 99
+
+// [ERROR]: Heterogeneous array literal (mixing string and int)
+int[] err_heteroArray = [1, "two", 3]
+
+// [ERROR]: Subscript index is not an integer
+int err_badIndex = validArray["first"]
+
+// [ERROR]: Subscript operator applied to non-array type
+int err_subscriptOnInt = 42[0]
+
+// 5. Binary Arithmetic, Strings, and Logic
+int sum = 10 + 20
+float floatSum = 10.5 + 2
+string concat = "Score: " + validInt
+bool logicAnd = (validInt > 50) && (validFloat < 10.0)
+
+// [ERROR]: Operator '+' applied to incompatible boolean and integer
+bool err_invalidPlus = true + 10
+
+// [ERROR]: Arithmetic subtraction applied to strings
+string err_strMinus = "Hello" - "World"
+
+// [ERROR]: Logical operator '&&' applied to non-boolean integer
+bool err_badLogic = (validInt > 0) && 100
+
+// [ERROR]: Comparing incompatible types (int vs string)
+bool err_badCompare = (validInt == "100")
+
+// 6. Range, Ternary Operator, and Formatted Strings
+string ternaryValid = validBool ? "Yes" : "No"
+string fstring = f"Current counter is: {validInt}"
+
+// [ERROR]: Non-integer bounds in range operator
+int[] err_badRange = "start".."end"
+
+// [ERROR]: Non-boolean condition in ternary operator
+string err_ternaryCond = 100 ? "A" : "B"
+
+// [ERROR]: Incompatible branch types in ternary operator
+string err_ternaryBranches = validBool ? "Text" : 500
+
+// 7. Loop Flow Validation (break & continue)
+while (validInt > 0):
+    validInt--
+    if (validInt == 50):
         break
     else:
         continue
 
-// 4. Structs
+for i in 0..5:
+    validInt++
+
+// [ERROR]: 'break' used outside of a loop
+break
+
+// [ERROR]: 'continue' used outside of a loop
+continue
+
+// [ERROR]: Non-boolean condition in while loop
+while (1000):
+    validInt++
+
+// 8. Structs and Member Access
 struct Point:
     int x
     int y
 
-// 5. Classes, Inheritance, Access Modifiers, and 'this' (C++ flat style)
+Point origin = Point()
+origin.x = 10
+origin.y = 20
+
+// [ERROR]: Accessing a field that does not exist in struct Point
+origin.z = 99
+
+// [ERROR]: Member access '.' applied to primitive integer
+int err_memberOnInt = 10.x
+
+// 9. Classes, Inheritance, and 'this' keyword
 class Animal:
     private:
-    string species
+    string secretSpecies
     public:
     void setSpecies(string s):
-        this.species = s
+        this.secretSpecies = s
+    string getSpecies():
+        return this.secretSpecies
 
 class Dog extends Animal:
     private:
     string name
     public:
+    void setName(string n):
+        this.name = n
     string getName():
         return this.name
     void bark():
         print("Woof!")
 
-// 6. Functions with Default Parameters
+Dog myDog = Dog()
+myDog.setName("Rex")
+
+// [ERROR]: Accessing private member 'secretSpecies' from outside class
+myDog.secretSpecies = "Canine"
+
+// [ERROR]: 'this' used outside of class methods
+this.name = "Invalid"
+
+// 10. Functions, Return Types, and Parameter Defaults
 int add(int a, int b = 10):
     return a + b
 
-int result = add(5)
+void logMessage(string msg):
+    print(msg)
+    return
+
+// [ERROR]: Missing return value in non-void function
+int err_missingReturn():
+    return
+
+// [ERROR]: Returning a value from a void function
+void err_voidReturnsValue():
+    return 100
+
+// [ERROR]: Return type mismatch (returning string when int is expected)
+int err_wrongReturnType():
+    return "Not an int"
+
+// [ERROR]: Positional parameter without default follows default parameter
+int err_badParamOrder(int a = 5, int b):
+    return a + b
+
+// [ERROR]: Calling function with wrong number of arguments
+int callArgCountErr = add(1, 2, 3)
+
+// [ERROR]: Calling function with incompatible argument type
+int callArgTypeErr = add("one", "two")

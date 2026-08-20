@@ -1,0 +1,158 @@
+// ============================================================================
+// WOLF COMPREHENSIVE SUITE (FEATURES & SEMANTIC CHECKS)
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// PARTE A: FUNZIONALITÀ VALIDE
+// ----------------------------------------------------------------------------
+
+// 1. Tipi Primitivi, Stringhe Raw e Formattate
+int globalId = 998
+float pi = 3.14159
+char initial = 'W'
+bool isActive = true
+string rawPath = r"C:\Wolf\Compiler\bin"
+string info = f"ID: {globalId}, Status: {isActive}"
+
+// 2. Struct
+struct Point:
+    int x
+    int y
+
+Point origin = Point()
+
+// 3. Classi, Ereditarietà, 'this' e Modificatori
+class Animal:
+    private:
+    string species
+    public:
+    void setSpecies(string s):
+        this.species = s
+    string getSpecies():
+        return this.species
+
+class Dog extends Animal:
+    private:
+    string name
+    public:
+    void setName(string n):
+        this.name = n
+    string getName():
+        return this.name
+    void bark():
+        print("Woof!")
+
+Dog myDog = Dog()
+
+// 4. Array, Array Literals e Range
+int[] scores = [10, 20, 30, 40]
+int firstScore = scores[0]
+
+for i in 0..5:
+    globalId++
+
+// 5. Controlli di Flusso, Ternario e Cicli
+string label = isActive ? "Online" : "Offline"
+
+if (globalId > 500):
+    int localTemp = 1
+elif (globalId == 500):
+    string statusMsg = "Exact"
+else:
+    float offset = 2.5
+
+while (globalId > 990):
+    globalId--
+    if (globalId == 995):
+        break
+    else:
+        continue
+
+// 6. Funzioni con Parametri di Default e Ricorsione
+int multiply(int a, int b = 2):
+    return a * b
+
+int mathResult = multiply(10)
+
+
+// ----------------------------------------------------------------------------
+// PARTE B: ERRORI SEMANTICI INTENZIONALI (Il SemanticAnalyzer deve catturarli)
+// ----------------------------------------------------------------------------
+
+// [ERRORE 1]: Assegnamento incompatibile (stringa in intero)
+int invalidTypeAssign = "Hello"
+
+// [ERRORE 2]: Variabile non dichiarata
+int unknownUsage = undeclaredVariable + 5
+
+// [ERRORE 3]: Assegnamento a un letterale (Non è un L-Value)
+5 = 100
+
+// [ERRORE 4]: Incremento su espressione non assegnabile
+(globalId + 10)++
+
+// [ERRORE 5]: Operazione matematica non consentita tra tipi incompatibili
+bool invalidMath = "Wolf" - 42
+
+// [ERRORE 6]: Indice dell'array non intero
+int badIndex = scores["first"]
+
+// [ERRORE 7]: Subscript '[]' su tipo non array
+int badSubscript = globalId[0]
+
+// [ERRORE 8]: Array con elementi di tipo disomogeneo
+int[] mixedArray = [10, "twenty", 30]
+
+// [ERRORE 9]: Condizione del ternario non booleana
+int badTernary = 123 ? 1 : 2
+
+// [ERRORE 10]: Rami del ternario con tipi incompatibili
+int badBranches = isActive ? 10 : "Ten"
+
+// [ERRORE 11]: Ridefinizione di variabile nello stesso scope
+int duplicateVar = 1
+int duplicateVar = 2
+
+// [ERRORE 12]: 'break' fuori da qualsiasi ciclo
+break
+
+// [ERRORE 13]: 'continue' fuori da qualsiasi ciclo
+continue
+
+// [ERRORE 14]: 'this' usato fuori da un metodo di classe
+string badThisUsage = this.species
+
+// [ERRORE 15]: Classe base inesistente nell'ereditarietà
+class Cat extends NonExistentAnimal:
+    public:
+    void meow():
+        print("Meow")
+
+// [ERRORE 16]: Accesso a membro inesistente in una struct
+Point badPoint = Point()
+int badField = badPoint.z
+
+// [ERRORE 17]: Accesso a membro su tipo primitivo
+int badDot = globalId.x
+
+// [ERRORE 18]: Funzione con ordine errato dei parametri di default
+int badParamOrder(int a = 10, int b):
+    return a + b
+
+// [ERRORE 19]: Return di un valore in una funzione 'void'
+void voidFunc():
+    return 42
+
+// [ERRORE 20]: Mancanza del valore di ritorno in funzione non-void
+int nonVoidFunc():
+    return
+
+// [ERRORE 21]: Tipo di ritorno non compatibile
+int wrongReturn():
+    return "NotAnInt"
+
+// [ERRORE 22]: Chiamata a funzione con numero errato di argomenti
+int wrongArgCount = multiply(1, 2, 3)
+
+// [ERRORE 23]: Chiamata a funzione con tipo di argomento errato
+int wrongArgType = multiply("Text")

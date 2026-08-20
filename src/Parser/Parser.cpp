@@ -19,18 +19,38 @@ std::vector<Stmt> Parser::parse() {
 // STATEMENT PARSERS (Recursive Descent)
 Stmt Parser::parseStatement() {
     // 1. Types (Variables OR Functions)
-    if (check(TokenType::KW_INT) || check(TokenType::KW_FLOAT) ||
-        check(TokenType::KW_CHAR) || check(TokenType::KW_STRING) ||
-        check(TokenType::KW_BOOL) || check(TokenType::KW_VOID)) { // Added VOID for functions!
 
-        // Peek at the next token to decide!
-        // We know that peekNext(1) is the identifier.  If the peeknNext(2) is a '(' is a function otherwise is a variable declaration.
+    if (check(TokenType::KW_INT) || check(TokenType::KW_FLOAT) ||
+            check(TokenType::KW_CHAR) || check(TokenType::KW_STRING) ||
+            check(TokenType::KW_BOOL) || check(TokenType::KW_VOID)) {
+        // If it is a primitive array (e.g. int[] arr)
+        if (peeknNext(1).type == TokenType::L_BRACKET) {
+            return parseVarDecl();
+        }
+        // If it is a function (e.g. int add(...) )
         if (peeknNext(2).type == TokenType::L_PAREN) {
-            return parseFunctionDecl(); // It's a function!
-        } else {
-            return parseVarDecl(); // It's a variable!
+            return parseFunctionDecl();
         }
+        // Otherwise it is a primitive variable (e.g. int x)
+        return parseVarDecl();
+    }
+    if (check(TokenType::IDENTIFIER)) {
+        // Case A: Array of custom type -> "Point[] points"
+        if (peeknNext(1).type == TokenType::L_BRACKET &&
+            peeknNext(2).type == TokenType::R_BRACKET &&
+            peeknNext(3).type == TokenType::IDENTIFIER) {
+            return parseVarDecl();
+            }
+        // Case B: Custom type followed by name -> "Point origin"
+        if (peeknNext(1).type == TokenType::IDENTIFIER) {
+            // If there is '(' after it, it is a function that returns a class -> "Point getOrigin():"
+            if (peeknNext(2).type == TokenType::L_PAREN) {
+                return parseFunctionDecl();
+            }
+            // Otherwise it is a variable -> "Point origin = Point()"
+            return parseVarDecl();
         }
+    }
 
     // 2. Control Flow
     if (check(TokenType::KW_IF)) return parseIfStmt();

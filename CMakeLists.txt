@@ -18,6 +18,13 @@ add_executable(
         include/Parser/Parser.h
         src/Utils/ASTPrinter.cpp
         include/Utils/ASTPrinter.h
+        src/Semantic/Type.cpp
+        include/Semantic/Type.h
+        include/Semantic/Symbol.h
+        include/Semantic/SymbolTable.h
+        src/Semantic/SymbolTable.cpp
+        include/Semantic/SemanticAnalyzer.h
+        src/Semantic/SemanticAnalyzer.cpp
 )
 
 # Includi i file header
