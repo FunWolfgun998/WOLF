@@ -1,10 +1,9 @@
 #include "../../include/Semantic/SymbolTable.h"
 
-// --- SCOPE IMPLEMENTATION ---
-
+// Scope methods
 bool Scope::define(const Symbol& symbol) {
     if (symbols.find(symbol.name) != symbols.end()) {
-        return false; // Error: Symbol redefinition in the same scope
+        return false; // Redeclaration error in same scope
     }
     symbols[symbol.name] = symbol;
     return true;
@@ -13,25 +12,20 @@ bool Scope::define(const Symbol& symbol) {
 std::optional<Symbol> Scope::resolve(const std::string& name) const {
     auto it = symbols.find(name);
     if (it != symbols.end()) {
-        return it->second; // Found in current scope
+        return it->second;
     }
-    
-    // Look up recursively in parent scope
     if (parent != nullptr) {
-        return parent->resolve(name);
+        return parent->resolve(name); // Search up the scope hierarchy
     }
-    
-    return std::nullopt; // Not found anywhere
+    return std::nullopt;
 }
 
 bool Scope::existsInCurrent(const std::string& name) const {
     return symbols.find(name) != symbols.end();
 }
 
-// --- SYMBOL TABLE IMPLEMENTATION ---
-
+// SymbolTable constructor: Pure global scope without hardcoded built-ins
 SymbolTable::SymbolTable() {
-    // Initialize the global scope at start
     globalScope = std::make_shared<Scope>(ScopeKind::GLOBAL, nullptr);
     currentScope = globalScope;
 }
@@ -61,13 +55,8 @@ bool SymbolTable::existsInCurrentScope(const std::string& name) const {
 bool SymbolTable::isInsideLoop() const {
     auto scope = currentScope;
     while (scope != nullptr) {
-        if (scope->getKind() == ScopeKind::BLOCK) {
-            // Block scopes inside while/for loops
-            return true;
-        }
-        if (scope->getKind() == ScopeKind::FUNCTION) {
-            break; // Stop looking beyond function boundaries
-        }
+        if (scope->getKind() == ScopeKind::BLOCK) return true;
+        if (scope->getKind() == ScopeKind::FUNCTION) break;
         scope = scope->getParent();
     }
     return false;
