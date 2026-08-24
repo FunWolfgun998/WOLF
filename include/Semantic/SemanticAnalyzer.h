@@ -41,6 +41,7 @@ private:
 
     // Extracts the primary anchor token of an expression for error highlighting
     static Token getExprToken(const Expr& expr);
+    SourceSpan getExprSpan(const Expr& expr);
 
 public:
     SemanticAnalyzer() = default;

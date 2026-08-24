@@ -2,8 +2,8 @@
 #include <iostream>
 
 void SemanticAnalyzer::reportError(ErrorCode code, const Token& token, const std::string& message, const std::string& hint) {
-    // Record diagnostic entry into engine
-    diagnostics.report(code, token, message, hint);
+    // Record diagnostic entry into the engine using token coordinates
+    diagnostics.report(code, SourceSpan(token), message, hint);
 }
 
 std::vector<std::string> SemanticAnalyzer::getVisibleSymbolNames() const {
@@ -45,13 +45,26 @@ const Type* SemanticAnalyzer::resolveTypeFromToken(const Token& typeToken) {
         if (symbolOpt->kind == SymbolKind::CLASS || symbolOpt->kind == SymbolKind::STRUCT) {
             return symbolOpt->type;
         }
-        reportError(ErrorCode::E0024_UNKNOWN_TYPE_NAME, typeToken, "'" + typeName + "' is a variable name, not a type.");
+        reportError(ErrorCode::E0024_UNKNOWN_TYPE_NAME, typeToken,
+                    "'" + typeName + "' is a variable name, not a type.",
+                    "variables cannot be used in type positions");
         return Type::getError();
     }
 
-    // Suggest closest matching identifier on typo
-    std::string suggestion = diagnostics.findClosestMatch(typeName, getVisibleSymbolNames());
-    std::string hint = suggestion.empty() ? "" : "did you mean '" + suggestion + "'?";
+    // Collect available type names for typo suggestions
+    std::vector<std::string> typeCandidates = {"int", "float", "char", "string", "bool", "void"};
+    auto scope = symbolTable.getCurrentScope();
+    while (scope != nullptr) {
+        for (const auto& [name, sym] : scope->getAllSymbols()) {
+            if (sym.kind == SymbolKind::CLASS || sym.kind == SymbolKind::STRUCT) {
+                typeCandidates.push_back(name);
+            }
+        }
+        scope = scope->getParent();
+    }
+
+    std::string suggestion = diagnostics.findClosestMatch(typeName, typeCandidates);
+    std::string hint = suggestion.empty() ? "ensure the class or struct is declared in scope" : "did you mean '" + suggestion + "'?";
     reportError(ErrorCode::E0024_UNKNOWN_TYPE_NAME, typeToken, "Unknown type name '" + typeName + "'.", hint);
     return Type::getError();
 }
@@ -64,7 +77,7 @@ bool SemanticAnalyzer::isLValue(const Expr& expr) {
 }
 
 Token SemanticAnalyzer::getExprToken(const Expr& expr) {
-    // Return the source anchor token for any given expression node
+    // Extract anchor token for coordinate tracking
     return std::visit([](const auto& node) -> Token {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, std::unique_ptr<LiteralExpr>>) return node->value;
@@ -80,6 +93,26 @@ Token SemanticAnalyzer::getExprToken(const Expr& expr) {
         if constexpr (std::is_same_v<T, std::unique_ptr<ArrayLiteralExpr>>) return node->openingBracket;
         if constexpr (std::is_same_v<T, std::unique_ptr<TernaryExpr>>) return node->questionMark;
         return Token(TokenType::UNKNOWN, "", 0, 0);
+    }, expr.as);
+}
+
+SourceSpan SemanticAnalyzer::getExprSpan(const Expr& expr) {
+    // Return precise source span including token column length
+    return std::visit([](const auto& node) -> SourceSpan {
+        using T = std::decay_t<decltype(node)>;
+        if constexpr (std::is_same_v<T, std::unique_ptr<LiteralExpr>>) return SourceSpan(node->value);
+        if constexpr (std::is_same_v<T, std::unique_ptr<VariableExpr>>) return SourceSpan(node->name);
+        if constexpr (std::is_same_v<T, std::unique_ptr<ThisExpr>>) return SourceSpan(node->keyword);
+        if constexpr (std::is_same_v<T, std::unique_ptr<BinaryExpr>>) return SourceSpan(node->op);
+        if constexpr (std::is_same_v<T, std::unique_ptr<RangeExpr>>) return SourceSpan(node->op);
+        if constexpr (std::is_same_v<T, std::unique_ptr<UnaryExpr>>) return SourceSpan(node->op);
+        if constexpr (std::is_same_v<T, std::unique_ptr<GroupingExpr>>) return SourceSpan(node->openingParen);
+        if constexpr (std::is_same_v<T, std::unique_ptr<CallExpr>>) return SourceSpan(node->paren);
+        if constexpr (std::is_same_v<T, std::unique_ptr<MemberAccessExpr>>) return SourceSpan(node->member);
+        if constexpr (std::is_same_v<T, std::unique_ptr<ArrayAccessExpr>>) return SourceSpan(node->openingBracket);
+        if constexpr (std::is_same_v<T, std::unique_ptr<ArrayLiteralExpr>>) return SourceSpan(node->openingBracket);
+        if constexpr (std::is_same_v<T, std::unique_ptr<TernaryExpr>>) return SourceSpan(node->questionMark);
+        return SourceSpan(1, 1, 1);
     }, expr.as);
 }
 
@@ -117,7 +150,9 @@ void SemanticAnalyzer::collectDeclarations(const std::vector<Stmt>& ast) {
             customTypes.push_back(std::move(structType));
 
             if (!symbolTable.define(Symbol((*structStmt)->name.lexeme, ptr, SymbolKind::STRUCT, (*structStmt)->name))) {
-                reportError(ErrorCode::E0004_DUPLICATE_DECLARATION, (*structStmt)->name, "Redefinition of struct '" + (*structStmt)->name.lexeme + "'.");
+                reportError(ErrorCode::E0004_DUPLICATE_DECLARATION, (*structStmt)->name,
+                            "Redefinition of struct '" + (*structStmt)->name.lexeme + "'.",
+                            "struct names must be unique within the global scope");
             }
         }
         else if (auto classStmt = std::get_if<std::unique_ptr<ClassDeclStmt>>(&stmt.as)) {
@@ -129,7 +164,9 @@ void SemanticAnalyzer::collectDeclarations(const std::vector<Stmt>& ast) {
             customTypes.push_back(std::move(classType));
 
             if (!symbolTable.define(Symbol((*classStmt)->name.lexeme, ptr, SymbolKind::CLASS, (*classStmt)->name))) {
-                reportError(ErrorCode::E0004_DUPLICATE_DECLARATION, (*classStmt)->name, "Redefinition of class '" + (*classStmt)->name.lexeme + "'.");
+                reportError(ErrorCode::E0004_DUPLICATE_DECLARATION, (*classStmt)->name,
+                            "Redefinition of class '" + (*classStmt)->name.lexeme + "'.",
+                            "class names must be unique within the global scope");
             }
         }
     }
@@ -159,7 +196,9 @@ void SemanticAnalyzer::collectDeclarations(const std::vector<Stmt>& ast) {
                     if (parentSym.has_value() && parentSym->kind == SymbolKind::CLASS) {
                         classType->superclass = parentSym->type;
                     } else {
-                        reportError(ErrorCode::E0024_UNKNOWN_TYPE_NAME, *(*classStmt)->superclass, "Base class '" + (*classStmt)->superclass->lexeme + "' is not defined.");
+                        reportError(ErrorCode::E0024_UNKNOWN_TYPE_NAME, *(*classStmt)->superclass,
+                                    "Base class '" + (*classStmt)->superclass->lexeme + "' is not defined.",
+                                    "ensure the parent class is declared before subclassing");
                     }
                 }
 
@@ -191,7 +230,9 @@ void SemanticAnalyzer::collectDeclarations(const std::vector<Stmt>& ast) {
             const Type* funcType = Type::makeFunction(returnType, paramTypes);
 
             if (!symbolTable.define(Symbol((*funcStmt)->name.lexeme, funcType, SymbolKind::FUNCTION, (*funcStmt)->name))) {
-                reportError(ErrorCode::E0004_DUPLICATE_DECLARATION, (*funcStmt)->name, "Redefinition of function '" + (*funcStmt)->name.lexeme + "'.");
+                reportError(ErrorCode::E0004_DUPLICATE_DECLARATION, (*funcStmt)->name,
+                            "Redefinition of function '" + (*funcStmt)->name.lexeme + "'.",
+                            "function overloading is not supported; choose a distinct name");
             }
         }
     }
@@ -221,8 +262,20 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<VariableExpr>& no
     // Resolve identifier in active lexical scopes
     auto symbolOpt = symbolTable.resolve(node->name.lexeme);
     if (!symbolOpt.has_value()) {
-        std::string suggestion = diagnostics.findClosestMatch(node->name.lexeme, getVisibleSymbolNames());
-        std::string hint = suggestion.empty() ? "" : "did you mean '" + suggestion + "'?";
+        // Collect candidate variables/parameters/functions while filtering out struct/class types
+        std::vector<std::string> candidates;
+        auto scope = symbolTable.getCurrentScope();
+        while (scope != nullptr) {
+            for (const auto& [name, sym] : scope->getAllSymbols()) {
+                if (sym.kind != SymbolKind::STRUCT && sym.kind != SymbolKind::CLASS) {
+                    candidates.push_back(name);
+                }
+            }
+            scope = scope->getParent();
+        }
+
+        std::string suggestion = diagnostics.findClosestMatch(node->name.lexeme, candidates);
+        std::string hint = suggestion.empty() ? "ensure variable is declared before use" : "did you mean '" + suggestion + "'?";
 
         reportError(ErrorCode::E0001_UNDECLARED_VARIABLE, node->name,
                     "Variable '" + node->name.lexeme + "' is not declared in this scope.", hint);
@@ -234,7 +287,9 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<VariableExpr>& no
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<ThisExpr>& node) {
     // 'this' is only valid inside class methods
     if (currentClass == nullptr) {
-        reportError(ErrorCode::E0011_THIS_OUTSIDE_CLASS, node->keyword, "Cannot use 'this' outside of a class method.");
+        reportError(ErrorCode::E0011_THIS_OUTSIDE_CLASS, node->keyword,
+                    "Cannot use 'this' outside of a class method.",
+                    "'this' refers to the instance of the enclosing class");
         return Type::getError();
     }
     return currentClass;
@@ -250,16 +305,19 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
     // Assignment operator '='
     if (node->op.type == TokenType::OP_ASSIGN) {
         if (!isLValue(node->left)) {
-            // Point to the left-hand expression that cannot be assigned
+            std::string hint = "assign to a variable or object field instead";
+            if (std::holds_alternative<std::unique_ptr<LiteralExpr>>(node->left.as)) {
+                hint = "did you mean to use '==' for equality comparison?";
+            }
             reportError(ErrorCode::E0003_INVALID_ASSIGNMENT_TARGET, getExprToken(node->left),
-                        "Invalid assignment target: left-hand side is not an assignable variable.");
+                        "Invalid assignment target: left-hand side is not an assignable variable.", hint);
             return Type::getError();
         }
         if (!rightType->isAssignableTo(leftType)) {
-            // Point to the right-hand value being assigned
             reportError(ErrorCode::E0002_TYPE_MISMATCH, getExprToken(node->right),
                         "Cannot assign value of type '" + rightType->toString() +
-                        "' to target of type '" + leftType->toString() + "'.");
+                        "' to target of type '" + leftType->toString() + "'.",
+                        "types must match or be implicitly convertible");
             return Type::getError();
         }
         return leftType;
@@ -270,7 +328,8 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
         node->op.type == TokenType::OP_MUL_ASS || node->op.type == TokenType::OP_DIV_ASS ||
         node->op.type == TokenType::OP_MOD_ASS) {
         if (!isLValue(node->left)) {
-            reportError(ErrorCode::E0003_INVALID_ASSIGNMENT_TARGET, node->op, "Left-hand side of compound assignment is not assignable.");
+            reportError(ErrorCode::E0003_INVALID_ASSIGNMENT_TARGET, getExprToken(node->left),
+                        "Left-hand side of compound assignment is not assignable.");
             return Type::getError();
         }
         // Allow '+=' on strings for in-place concatenation
@@ -278,7 +337,9 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
             return leftType;
         }
         if (!leftType->isNumeric() || !rightType->isNumeric()) {
-            reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op, "Compound operator requires numeric operands.");
+            reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op,
+                        "Compound operator requires numeric operands.",
+                        "both sides must be 'int' or 'float'");
             return Type::getError();
         }
         return leftType;
@@ -292,8 +353,10 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
         if (leftType->isInteger() && rightType->isInteger()) return Type::getInt();
         if (leftType->isNumeric() && rightType->isNumeric()) return Type::getFloat();
 
-        reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op, "Operator '+' cannot be applied between '" + leftType->toString() +
-                              "' and '" + rightType->toString() + "'.");
+        reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op,
+                    "Operator '+' cannot be applied between '" + leftType->toString() +
+                    "' and '" + rightType->toString() + "'.",
+                    "'+' is only supported for numeric addition and string concatenation");
         return Type::getError();
     }
 
@@ -303,15 +366,19 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
         if (leftType->isInteger() && rightType->isInteger()) return Type::getInt();
         if (leftType->isNumeric() && rightType->isNumeric()) return Type::getFloat();
 
-        reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op, "Arithmetic operator requires numeric operands.");
+        std::string hint = "strings do not support arithmetic; use '+' for concatenation";
+        reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op,
+                    "Arithmetic operator requires numeric operands.", hint);
         return Type::getError();
     }
 
     // Equality comparisons (==, !=)
     if (node->op.type == TokenType::OP_EQ_EQ || node->op.type == TokenType::OP_NOT_EQ) {
         if (!leftType->isAssignableTo(rightType) && !rightType->isAssignableTo(leftType)) {
-            reportError(ErrorCode::E0002_TYPE_MISMATCH, node->op, "Cannot compare incompatible types '" + leftType->toString() +
-                                  "' and '" + rightType->toString() + "'.");
+            reportError(ErrorCode::E0002_TYPE_MISMATCH, node->op,
+                        "Cannot compare incompatible types '" + leftType->toString() +
+                        "' and '" + rightType->toString() + "'.",
+                        "ensure both operands have compatible types");
             return Type::getError();
         }
         return Type::getBool();
@@ -321,7 +388,9 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
     if (node->op.type == TokenType::OP_LESS || node->op.type == TokenType::OP_LESS_EQ ||
         node->op.type == TokenType::OP_GRT || node->op.type == TokenType::OP_GRT_EQ) {
         if (!leftType->isNumeric() || !rightType->isNumeric()) {
-            reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op, "Relational comparisons require numeric operands.");
+            reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op,
+                        "Relational comparisons require numeric operands.",
+                        "operands must be 'int' or 'float'");
             return Type::getError();
         }
         return Type::getBool();
@@ -330,7 +399,9 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
     // Logical boolean operators (&&, ||)
     if (node->op.type == TokenType::OP_AND || node->op.type == TokenType::OP_OR) {
         if (!leftType->isBool() || !rightType->isBool()) {
-            reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, node->op, "Logical operators require boolean operands.");
+            reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, node->op,
+                        "Logical operators require boolean operands.",
+                        "use comparison expressions producing 'bool'");
             return Type::getError();
         }
         return Type::getBool();
@@ -345,7 +416,9 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<RangeExpr>& node)
 
     // Range bounds must both be integer expressions
     if (!startType->isInteger() || !endType->isInteger()) {
-        reportError(ErrorCode::E0021_INVALID_RANGE_BOUNDS, node->op, "Range bounds must evaluate to integers.");
+        reportError(ErrorCode::E0021_INVALID_RANGE_BOUNDS, node->op,
+                    "Range bounds must evaluate to integers.",
+                    "e.g. '0..10'");
         return Type::getError();
     }
     return Type::makeArray(Type::getInt());
@@ -358,7 +431,9 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<UnaryExpr>& node)
     // Logical negation requires boolean operand
     if (node->op.type == TokenType::OP_NOT) {
         if (!operandType->isBool()) {
-            reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, node->op, "Logical NOT '!' requires a boolean operand.");
+            reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, node->op,
+                        "Logical NOT '!' requires a boolean operand.",
+                        "for bitwise inversion use '~'");
             return Type::getError();
         }
         return Type::getBool();
@@ -367,7 +442,8 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<UnaryExpr>& node)
     // Unary sign operators require numeric operand
     if (node->op.type == TokenType::OP_MINUS || node->op.type == TokenType::OP_PLUS) {
         if (!operandType->isNumeric()) {
-            reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op, "Unary operator requires a numeric operand.");
+            reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op,
+                        "Unary operator requires a numeric operand.");
             return Type::getError();
         }
         return operandType;
@@ -376,13 +452,14 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<UnaryExpr>& node)
     // Increment and decrement require numeric assignable target
     if (node->op.type == TokenType::OP_INC || node->op.type == TokenType::OP_DEC) {
         if (!isLValue(node->operand)) {
-            // Point to the operand, not the operator
             reportError(ErrorCode::E0003_INVALID_ASSIGNMENT_TARGET, getExprToken(node->operand),
-                        "Target of increment/decrement must be an assignable variable.");
+                        "Target of increment/decrement must be an assignable variable.",
+                        "increment/decrement modifies memory and cannot be applied to literals");
             return Type::getError();
         }
         if (!operandType->isNumeric()) {
-            reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op, "Increment/decrement requires a numeric operand.");
+            reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->op,
+                        "Increment/decrement requires a numeric operand.");
             return Type::getError();
         }
         return operandType;
@@ -413,7 +490,8 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<CallExpr>& node) 
         if (passedArgs > totalParams) {
             reportError(ErrorCode::E0017_ARGUMENT_COUNT_MISMATCH, node->paren,
                         "Function expects at most " + std::to_string(totalParams) +
-                        " arguments, but received " + std::to_string(passedArgs) + ".");
+                        " arguments, but received " + std::to_string(passedArgs) + ".",
+                        "remove extraneous arguments");
             return Type::getError();
         }
 
@@ -422,16 +500,19 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<CallExpr>& node) 
             const Type* argType = evaluate(node->arguments[i]);
             const Type* paramType = calleeType->paramTypes[i];
             if (!argType->isAssignableTo(paramType)) {
-                reportError(ErrorCode::E0018_ARGUMENT_TYPE_MISMATCH, node->paren,
+                reportError(ErrorCode::E0018_ARGUMENT_TYPE_MISMATCH, getExprToken(node->arguments[i]),
                             "Argument " + std::to_string(i + 1) + " of type '" +
                             argType->toString() + "' is not assignable to parameter of type '" +
-                            paramType->toString() + "'.");
+                            paramType->toString() + "'.",
+                            "pass a compatible expression matching parameter type");
             }
         }
         return calleeType->returnType;
     }
 
-    reportError(ErrorCode::E0025_NOT_CALLABLE, node->paren, "Target expression is not callable as a function.");
+    reportError(ErrorCode::E0025_NOT_CALLABLE, node->paren,
+                "Target expression is not callable as a function.",
+                "only functions, classes, and structs can be invoked with '()'");
     return Type::getError();
 }
 
@@ -442,7 +523,8 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>
     if (baseType->kind != TypeKind::CLASS && baseType->kind != TypeKind::STRUCT) {
         reportError(ErrorCode::E0013_MEMBER_NOT_FOUND, node->dot,
                     "Cannot access member '" + node->member.lexeme +
-                    "' on non-class/non-struct type '" + baseType->toString() + "'.");
+                    "' on non-class/non-struct type '" + baseType->toString() + "'.",
+                    "primitive types do not have fields or methods");
         return Type::getError();
     }
 
@@ -464,7 +546,7 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>
         if (!checkAccess(fieldIt->second, baseType)) {
             reportError(ErrorCode::E0012_PRIVATE_MEMBER_ACCESS, node->member,
                         "Cannot access 'private' field '" + node->member.lexeme + "' of class '" + baseType->name + "'.",
-                        "consider making '" + node->member.lexeme + "' public or providing a getter method.");
+                        "consider making '" + node->member.lexeme + "' public or providing a getter method");
         }
         return fieldIt->second.type;
     }
@@ -474,7 +556,8 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>
     if (methodIt != baseType->methods.end()) {
         if (!checkAccess(methodIt->second, baseType)) {
             reportError(ErrorCode::E0012_PRIVATE_MEMBER_ACCESS, node->member,
-                        "Cannot access 'private' method '" + node->member.lexeme + "' of class '" + baseType->name + "'.");
+                        "Cannot access 'private' method '" + node->member.lexeme + "' of class '" + baseType->name + "'.",
+                        "private methods can only be called from inside the class");
         }
         return methodIt->second.type;
     }
@@ -485,14 +568,16 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>
         auto pField = parent->fields.find(node->member.lexeme);
         if (pField != parent->fields.end()) {
             if (!checkAccess(pField->second, parent)) {
-                reportError(ErrorCode::E0012_PRIVATE_MEMBER_ACCESS, node->member, "Cannot access 'private' member of base class.");
+                reportError(ErrorCode::E0012_PRIVATE_MEMBER_ACCESS, node->member,
+                            "Cannot access 'private' member of base class '" + parent->name + "'.");
             }
             return pField->second.type;
         }
         auto pMethod = parent->methods.find(node->member.lexeme);
         if (pMethod != parent->methods.end()) {
             if (!checkAccess(pMethod->second, parent)) {
-                reportError(ErrorCode::E0012_PRIVATE_MEMBER_ACCESS, node->member, "Cannot access 'private' method of base class.");
+                reportError(ErrorCode::E0012_PRIVATE_MEMBER_ACCESS, node->member,
+                            "Cannot access 'private' method of base class '" + parent->name + "'.");
             }
             return pMethod->second.type;
         }
@@ -516,11 +601,15 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<ArrayAccessExpr>&
     const Type* indexType = evaluate(node->index);
 
     if (!indexType->isInteger()) {
-        reportError(ErrorCode::E0015_INVALID_SUBSCRIPT_INDEX, node->openingBracket, "Array index must evaluate to an integer.");
+        reportError(ErrorCode::E0015_INVALID_SUBSCRIPT_INDEX, getExprToken(node->index),
+                    "Array index must evaluate to an integer.",
+                    "pass an 'int' expression as array index");
     }
 
     if (arrayType->kind != TypeKind::ARRAY) {
-        reportError(ErrorCode::E0014_INVALID_SUBSCRIPT_TARGET, node->openingBracket, "Subscript operator '[]' can only be applied to array types.");
+        reportError(ErrorCode::E0014_INVALID_SUBSCRIPT_TARGET, getExprToken(node->array),
+                    "Subscript operator '[]' can only be applied to array types.",
+                    "indexing is not supported on non-array types");
         return Type::getError();
     }
 
@@ -537,19 +626,22 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<ArrayLiteralExpr>
     for (size_t i = 1; i < node->elements.size(); ++i) {
         const Type* elemType = evaluate(node->elements[i]);
         if (!elemType->isAssignableTo(firstType)) {
-            // Point to the specific element at index i, not the opening bracket '['
             reportError(ErrorCode::E0016_ARRAY_ELEMENT_TYPE_MISMATCH, getExprToken(node->elements[i]),
                         "Array element of type '" + elemType->toString() +
-                        "' is incompatible with array element type '" + firstType->toString() + "'.");
+                        "' is incompatible with array element type '" + firstType->toString() + "'.",
+                        "all elements in an array literal must share a common type");
         }
     }
+
     return Type::makeArray(firstType);
 }
 
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<TernaryExpr>& node) {
     const Type* condType = evaluate(node->condition);
     if (!condType->isBool()) {
-        reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, node->questionMark, "Ternary condition must evaluate to a boolean expression.");
+        reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, node->questionMark,
+                    "Ternary condition must evaluate to a boolean expression.",
+                    "ensure the condition expression evaluates to 'bool'");
     }
 
     const Type* trueType = evaluate(node->trueBranch);
@@ -558,7 +650,8 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<TernaryExpr>& nod
     if (!falseType->isAssignableTo(trueType) && !trueType->isAssignableTo(falseType)) {
         reportError(ErrorCode::E0022_INCOMPATIBLE_TERNARY_BRANCHES, node->questionMark,
                     "Ternary branch types are incompatible ('" +
-                    trueType->toString() + "' vs '" + falseType->toString() + "').");
+                    trueType->toString() + "' vs '" + falseType->toString() + "').",
+                    "both branches must yield compatible return types");
         return Type::getError();
     }
 
@@ -576,16 +669,23 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<VarDeclStmt>& node) {
     if (node->initializer != nullptr) {
         const Type* initType = evaluate(*node->initializer);
         if (!initType->isAssignableTo(declaredType)) {
-            // Point directly to the initializer expression!
+            std::string hint = "ensure expression type matches declared variable type";
+            if (declaredType->isString()) {
+                hint = "consider using a format string f\"...\" to convert values to string";
+            } else if (declaredType->isInteger() && initType->isFloat()) {
+                hint = "floats cannot be implicitly narrowed to int; use explicit truncation";
+            }
             reportError(ErrorCode::E0002_TYPE_MISMATCH, getExprToken(*node->initializer),
                         "Cannot initialize variable of type '" + declaredType->toString() +
-                        "' with expression of type '" + initType->toString() + "'.");
+                        "' with expression of type '" + initType->toString() + "'.", hint);
         }
     }
 
     // Register variable in current lexical scope
     if (!symbolTable.define(Symbol(node->name.lexeme, declaredType, SymbolKind::VARIABLE, node->name))) {
-        reportError(ErrorCode::E0004_DUPLICATE_DECLARATION, node->name, "Variable '" + node->name.lexeme + "' is already defined in this block.");
+        reportError(ErrorCode::E0004_DUPLICATE_DECLARATION, node->name,
+                    "Variable '" + node->name.lexeme + "' is already defined in this block.",
+                    "choose a distinct identifier or remove duplicate declaration");
     }
 }
 
@@ -600,7 +700,9 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<BlockStmt>& node) {
 void SemanticAnalyzer::operator()(const std::unique_ptr<IfStmt>& node) {
     const Type* condType = evaluate(node->condition);
     if (!condType->isBool()) {
-        reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, node->keyword, "If condition must be a boolean expression.");
+        reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, node->keyword,
+                    "If condition must be a boolean expression.",
+                    "consider comparing with zero: '(value != 0)'");
     }
 
     execute(node->thenBranch);
@@ -608,7 +710,8 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<IfStmt>& node) {
     for (const auto& elifBranch : node->elifBranches) {
         const Type* elifCondType = evaluate(elifBranch.condition);
         if (!elifCondType->isBool()) {
-            reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, elifBranch.keyword, "Elif condition must be a boolean expression.");
+            reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, elifBranch.keyword,
+                        "Elif condition must be a boolean expression.");
         }
         execute(elifBranch.block);
     }
@@ -621,7 +724,9 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<IfStmt>& node) {
 void SemanticAnalyzer::operator()(const std::unique_ptr<WhileStmt>& node) {
     const Type* condType = evaluate(node->condition);
     if (!condType->isBool()) {
-        reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, node->keyword, "While loop condition must be a boolean expression.");
+        reportError(ErrorCode::E0019_NON_BOOLEAN_CONDITION, node->keyword,
+                    "While loop condition must be a boolean expression.",
+                    "consider comparing explicitly: '(condition != 0)'");
     }
 
     loopDepth++;
@@ -632,7 +737,9 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<WhileStmt>& node) {
 void SemanticAnalyzer::operator()(const std::unique_ptr<ForStmt>& node) {
     const Type* iterableType = evaluate(node->iterable);
     if (iterableType->kind != TypeKind::ARRAY) {
-        reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->keyword, "For loop iterable must evaluate to an array or range.");
+        reportError(ErrorCode::E0020_INVALID_OPERATOR_OPERANDS, node->keyword,
+                    "For loop iterable must evaluate to an array or range.",
+                    "use a range expression (e.g. '0..10') or an array variable");
     }
 
     loopDepth++;
@@ -662,15 +769,16 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<FunctionDeclStmt>& node)
             seenDefault = true;
             const Type* defType = evaluate(*param.defaultValue);
             if (!defType->isAssignableTo(paramType)) {
-                reportError(ErrorCode::E0002_TYPE_MISMATCH, param.name,
+                reportError(ErrorCode::E0002_TYPE_MISMATCH, getExprToken(*param.defaultValue),
                             "Default value of type '" + defType->toString() +
-                            "' does not match parameter type '" + paramType->toString() + "'.");
+                            "' does not match parameter type '" + paramType->toString() + "'.",
+                            "provide a default value matching the parameter type");
             }
         } else if (seenDefault) {
-            // Positional parameters cannot follow parameters with default values
             reportError(ErrorCode::E0023_DEFAULT_PARAM_ORDER, param.name,
                         "Positional parameter '" + param.name.lexeme +
-                        "' cannot follow default parameters.");
+                        "' cannot follow default parameters.",
+                        "place all parameters with default values at the end of the list");
         }
 
         symbolTable.define(Symbol(param.name.lexeme, paramType, SymbolKind::PARAMETER, param.name));
@@ -704,24 +812,32 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<ClassDeclStmt>& node) {
 
 void SemanticAnalyzer::operator()(const std::unique_ptr<ReturnStmt>& node) {
     if (currentFunctionReturnType == nullptr) {
-        reportError(ErrorCode::E0007_RETURN_OUTSIDE_FUNCTION, node->keyword, "'return' statement not allowed outside of a function.");
+        reportError(ErrorCode::E0007_RETURN_OUTSIDE_FUNCTION, node->keyword,
+                    "'return' statement not allowed outside of a function.",
+                    "remove 'return' from global scope");
         return;
     }
 
     if (currentFunctionReturnType->isVoid()) {
         if (node->value != nullptr) {
-            reportError(ErrorCode::E0010_RETURN_IN_VOID_FUNCTION, node->keyword, "Cannot return a value from a function with 'void' return type.");
+            reportError(ErrorCode::E0010_RETURN_IN_VOID_FUNCTION, getExprToken(*node->value),
+                        "Cannot return a value from a function with 'void' return type.",
+                        "use 'return' without a value or change function signature");
         }
     } else {
         if (node->value == nullptr) {
-            reportError(ErrorCode::E0009_MISSING_RETURN_VALUE, node->keyword, "Missing return value: function expects return type '" +
-                                       currentFunctionReturnType->toString() + "'.");
+            reportError(ErrorCode::E0009_MISSING_RETURN_VALUE, node->keyword,
+                        "Missing return value: function expects return type '" +
+                        currentFunctionReturnType->toString() + "'.",
+                        "provide an expression matching the return type");
         } else {
             const Type* valType = evaluate(*node->value);
             if (!valType->isAssignableTo(currentFunctionReturnType)) {
-                reportError(ErrorCode::E0008_RETURN_TYPE_MISMATCH, node->keyword, "Return value of type '" + valType->toString() +
-                                           "' does not match expected function return type '" +
-                                           currentFunctionReturnType->toString() + "'.");
+                reportError(ErrorCode::E0008_RETURN_TYPE_MISMATCH, getExprToken(*node->value),
+                        "Return value of type '" + valType->toString() +
+                        "' does not match expected function return type '" +
+                        currentFunctionReturnType->toString() + "'.",
+                        "return an expression compatible with '" + currentFunctionReturnType->toString() + "'");
             }
         }
     }
@@ -729,12 +845,16 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<ReturnStmt>& node) {
 
 void SemanticAnalyzer::operator()(const std::unique_ptr<BreakStmt>& node) {
     if (loopDepth == 0) {
-        reportError(ErrorCode::E0005_BREAK_OUTSIDE_LOOP, node->keyword, "'break' statement is only allowed inside loops.");
+        reportError(ErrorCode::E0005_BREAK_OUTSIDE_LOOP, node->keyword,
+                    "'break' statement is only allowed inside loops.",
+                    "'break' can only terminate 'while' or 'for' loop bodies");
     }
 }
 
 void SemanticAnalyzer::operator()(const std::unique_ptr<ContinueStmt>& node) {
     if (loopDepth == 0) {
-        reportError(ErrorCode::E0006_CONTINUE_OUTSIDE_LOOP, node->keyword, "'continue' statement is only allowed inside loops.");
+        reportError(ErrorCode::E0006_CONTINUE_OUTSIDE_LOOP, node->keyword,
+                    "'continue' statement is only allowed inside loops.",
+                    "'continue' can only advance 'while' or 'for' loop iterations");
     }
 }
