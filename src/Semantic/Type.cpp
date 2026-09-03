@@ -87,45 +87,49 @@ const Type* Type::makeNullable(const Type* base) {
 
 
 bool Type::isAssignableTo(const Type* target) const {
+    // Exact pointer identity match
     if (this == target) return true;
+
+    // Suppress cascade diagnostics if either type is an error sentinel
     if (this->isError() || target->isError()) return true;
 
     // Void cannot be assigned to any variable
     if (this->isVoid() || target->isVoid()) return false;
 
-    // 'null' can only be assigned to nullable target types (T?)
+    // 'null' can only be assigned to explicitly nullable targets (T?)
     if (this->isNull()) {
         return target->isNullable;
     }
 
-    // Nullable types cannot be assigned to non-nullable targets without explicit check
+    // A nullable source (T?) cannot be assigned to a non-nullable target (T)
     if (this->isNullable && !target->isNullable) {
         return false;
     }
-    
-    // Non-nullable T is assignable to nullable T? (e.g. int -> int?, Dog -> Dog?)
+
+    // Non-nullable source T is assignable to nullable target T? (e.g. int -> int?, Dog -> Dog?)
     if (!this->isNullable && target->isNullable) {
         if (this->name + "?" == target->name) return true;
     }
 
     // Implicit numeric widening: int -> float
-    if (this->isInteger() && target->isFloat()) return true;
+    if (this->isInteger() && (target->isFloat() || target->name == "float?")) return true;
 
-    // Recursive array element assignability
+    // Recursive array element assignability (e.g. int[] -> int?[] or int[] -> int[])
     if (this->kind == TypeKind::ARRAY && target->kind == TypeKind::ARRAY) {
         return this->elementType->isAssignableTo(target->elementType);
     }
 
-    // OOP inheritance hierarchy traversal
+    // OOP inheritance hierarchy traversal (e.g. Dog -> Animal or Dog -> Animal?)
     if (this->kind == TypeKind::CLASS && target->kind == TypeKind::CLASS) {
         const Type* current = this->superclass;
+        std::string targetBaseName = target->isNullable ? target->name.substr(0, target->name.size() - 1) : target->name;
         while (current != nullptr) {
-            if (current == target || current->name == target->name) return true;
+            if (current == target || current->name == targetBaseName) return true;
             current = current->superclass;
         }
     }
 
-    // Match base type names ignoring nullable markers
+    // Match base type names
     if (this->name == target->name) return true;
 
     return false;
