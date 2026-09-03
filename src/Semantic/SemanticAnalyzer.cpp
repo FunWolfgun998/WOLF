@@ -711,7 +711,6 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<ArrayLiteralExpr>
         return Type::makeArray(Type::getVoid());
     }
 
-    // Step 1: Find the common base type among all elements
     const Type* commonType = nullptr;
 
     for (const auto& elem : node->elements) {
@@ -723,37 +722,33 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<ArrayLiteralExpr>
             continue;
         }
 
-        // Case A: Element is identical to current common type
-        if (elemType == commonType) continue;
+        // Direct canonical pointer match or subtype assignability
+        if (elemType == commonType || elemType->isAssignableTo(commonType)) {
+            continue;
+        }
 
-        // Case B: Element is 'null', unify with common type to produce nullable T?
+        // Promote common type if new element is a wider supertype
+        if (commonType->isAssignableTo(elemType)) {
+            commonType = elemType;
+            continue;
+        }
+
+        // Unify concrete types with null to infer nullable array (T + null -> T?)
         if (elemType->isNull()) {
             if (!commonType->isNullable && !commonType->isNull()) {
                 commonType = Type::makeNullable(commonType);
             }
             continue;
         }
-
-        // Case C: Current common type was 'null', unify with new concrete type
         if (commonType->isNull()) {
             commonType = Type::makeNullable(elemType);
             continue;
         }
 
-        // Case D: Numeric promotion (int + float -> float)
-        if (commonType->isInteger() && elemType->isFloat()) {
-            commonType = Type::getFloat();
-            continue;
-        }
-        if (commonType->isFloat() && elemType->isInteger()) {
-            continue;
-        }
-
-        // Case E: Incompatible types (e.g. int vs string)
         reportError(DiagnosticCode::E0016_ARRAY_ELEMENT_TYPE_MISMATCH, getExprToken(elem),
                     "Array element of type '" + elemType->toString() +
                     "' is incompatible with inferred array type '" + commonType->toString() + "'.",
-                    "ensure all array elements share a compatible base type");
+                    "all elements in an array literal must share a compatible base type");
         return Type::getError();
     }
 

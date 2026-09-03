@@ -22,16 +22,8 @@ const Type* Type::getError()  { return &TYPE_ERROR; }
 // Pool to cache complex types (Arrays, Functions) to ensure fast pointer comparisons
 static std::vector<std::unique_ptr<Type>> typePool;
 
-const Type* Type::makeArray(const Type* element) {
-    auto arrayType = std::make_unique<Type>();
-    arrayType->kind = TypeKind::ARRAY;
-    arrayType->name = element->name + "[]";
-    arrayType->elementType = element;
-    
-    const Type* ptr = arrayType.get();
-    typePool.push_back(std::move(arrayType));
-    return ptr;
-}
+static std::unordered_map<const Type*, const Type*> arrayTypeCache;
+static std::unordered_map<const Type*, const Type*> nullableTypeCache;
 
 const Type* Type::makeFunction(const Type* returnType, std::vector<const Type*> params) {
     auto funcType = std::make_unique<Type>();
@@ -52,17 +44,47 @@ const Type* Type::makeFunction(const Type* returnType, std::vector<const Type*> 
     return ptr;
 }
 
-const Type* Type::makeNullable(const Type* base) {
-    if (base->isNullable || base->isError() || base->isVoid()) return base;
+const Type* Type::makeArray(const Type* element) {
+    if (element == nullptr || element->isError()) return Type::getError();
 
-    auto nullableType = std::make_unique<Type>(*base); // Copy base metadata
+    // Return existing canonical pointer if array of this element type was already created
+    auto it = arrayTypeCache.find(element);
+    if (it != arrayTypeCache.end()) {
+        return it->second;
+    }
+
+    auto arrayType = std::make_unique<Type>();
+    arrayType->kind = TypeKind::ARRAY;
+    arrayType->name = element->name + "[]";
+    arrayType->elementType = element;
+
+    const Type* ptr = arrayType.get();
+    arrayTypeCache[element] = ptr;
+    typePool.push_back(std::move(arrayType));
+    return ptr;
+}
+
+const Type* Type::makeNullable(const Type* base) {
+    if (base == nullptr || base->isNullable || base->isError() || base->isVoid() || base->isNull()) {
+        return base;
+    }
+
+    // Return existing canonical pointer if nullable version of this type was already created
+    auto it = nullableTypeCache.find(base);
+    if (it != nullableTypeCache.end()) {
+        return it->second;
+    }
+
+    auto nullableType = std::make_unique<Type>(*base);
     nullableType->isNullable = true;
     nullableType->name = base->name + "?";
 
     const Type* ptr = nullableType.get();
+    nullableTypeCache[base] = ptr;
     typePool.push_back(std::move(nullableType));
     return ptr;
 }
+
 
 bool Type::isAssignableTo(const Type* target) const {
     if (this == target) return true;
