@@ -1,185 +1,177 @@
 // ============================================================================
-// WOLF FULL SEMANTIC VALIDATION TEST SUITE
+// WOLF COMPREHENSIVE LEXER & PARSER VALIDATION TEST SUITE
 // ============================================================================
 
-// 1. Primitive variable declarations and implicit widening
-int validInt = 100
-float validFloat = 3.14
-char validChar = 'W'
-bool validBool = true
-string validStr = "Wolf Language"
-float intPromotedToFloat = 42
+// 1. Comments: Single-line and Nested Multi-line
+// Single-line comment test
+/* Multi-line comment
+   /* Nested multi-line level 2
+      /* Nested multi-line level 3 */
+   */
+   Back to level 1
+*/
 
-// [ERROR]: Type mismatch in variable initialization
-int err_typeMismatch = "This is a string, not an int"
-bool err_numToBool = 100
+// 2. Numeric Literals: Decimal, Hexadecimal, Binary, Octal, Floats, Scientific
+int decNum = 42
+int hexNum = 0xFF
+int binNum = 0b101101
+int octNum = 0o755
+float standardFloat = 3.14159
+float scientificFloat1 = 9.98e9
+float scientificFloat2 = 1.25e-4
 
-// 2. Variable Scope, Re-definition and Undeclared lookups
-int globalCounter = 10
+// 3. Character and String Literals: ASCII, Escape Sequences, Unicode, Raw, Format
+char asciiChar = 'W'
+char newlineChar = '\n'
+char tabChar = '\t'
+char unicodeChar = '€'
+string standardStr = "Hello\tWorld!\n"
+string rawPath = r"C:\Wolf\Compiler\bin\""
+string formatStr = f"Value is: {decNum} with hex {hexNum}"
 
-// Valid local variable and shadowing inside block
-if (globalCounter > 0):
-    int globalCounter = 50
-    int localOnly = 20
+// 4. Variables, Constants, Arrays, and Nullable Type Combinations
+const int MAX_BUFFER = 1024
+const float GRAVITY = 9.81
 
-// [ERROR]: Variable declared inside if-block is out of scope here
-int err_outOfScope = localOnly
+int simpleInt = 10
+int? nullableInt = null
+int[] singleDimArray = [1, 2, 3, 4, 5]
+int[][] matrix = [[1, 2], [3, 4]]
+int[]? nullableArray = null
+int?[] arrayOfNullables = [1, null, 3]
+int[][]? nullableMatrix = null
 
-// [ERROR]: Redeclaring an identifier in the same scope block
-int duplicateVar = 1
-int duplicateVar = 2
-
-// [ERROR]: Using an identifier that has never been declared
-undeclaredVariable = 500
-
-// 3. L-Values and Assignability
-validInt = 200
-
-// [ERROR]: Assigning to non-assignable expressions (Literals / Binary sums)
-5 = 10
-(validInt + 10) = 50
-
-// [ERROR]: Increment and decrement on non-LValue literals
-5++
---10
-
-// 4. Arrays, Element Type Homogeneity, and Subscripts
-int[] validArray = [1, 2, 3, 4, 5]
-int firstElement = validArray[0]
-validArray[1] = 99
-
-// [ERROR]: Heterogeneous array literal (mixing string and int)
-int[] err_heteroArray = [1, "two", 3]
-
-// [ERROR]: Subscript index is not an integer
-int err_badIndex = validArray["first"]
-
-// [ERROR]: Subscript operator applied to non-array type
-int err_subscriptOnInt = 42[0]
-
-// 5. Binary Arithmetic, Strings, and Logic
-int sum = 10 + 20
-float floatSum = 10.5 + 2
-string concat = "Score: " + validInt
-bool logicAnd = (validInt > 50) && (validFloat < 10.0)
-
-// [ERROR]: Operator '+' applied to incompatible boolean and integer
-bool err_invalidPlus = true + 10
-
-// [ERROR]: Arithmetic subtraction applied to strings
-string err_strMinus = "Hello" - "World"
-
-// [ERROR]: Logical operator '&&' applied to non-boolean integer
-bool err_badLogic = (validInt > 0) && 100
-
-// [ERROR]: Comparing incompatible types (int vs string)
-bool err_badCompare = (validInt == "100")
-
-// 6. Range, Ternary Operator, and Formatted Strings
-string ternaryValid = validBool ? "Yes" : "No"
-string fstring = f"Current counter is: {validInt}"
-
-// [ERROR]: Non-integer bounds in range operator
-int[] err_badRange = "start".."end"
-
-// [ERROR]: Non-boolean condition in ternary operator
-string err_ternaryCond = 100 ? "A" : "B"
-
-// [ERROR]: Incompatible branch types in ternary operator
-string err_ternaryBranches = validBool ? "Text" : 500
-
-// 7. Loop Flow Validation (break & continue)
-while (validInt > 0):
-    validInt--
-    if (validInt == 50):
-        break
-    else:
-        continue
-
-for i in 0..5:
-    validInt++
-
-// [ERROR]: 'break' used outside of a loop
-break
-
-// [ERROR]: 'continue' used outside of a loop
-continue
-
-// [ERROR]: Non-boolean condition in while loop
-while (1000):
-    validInt++
-
-// 8. Structs and Member Access
+// 5. Struct Declarations and Custom Type Instantiations
 struct Point:
     int x
     int y
 
+struct Rectangle:
+    Point topLeft
+    Point bottomRight
+
 Point origin = Point()
-origin.x = 10
-origin.y = 20
+origin.x = 0
+origin.y = 0
 
-// [ERROR]: Accessing a field that does not exist in struct Point
-origin.z = 99
+Rectangle screenBounds = Rectangle()
+screenBounds.topLeft = origin
 
-// [ERROR]: Member access '.' applied to primitive integer
-int err_memberOnInt = 10.x
-
-// 9. Classes, Inheritance, and 'this' keyword
-class Animal:
-    private:
-    string secretSpecies
+// 6. Classes, Inheritance, Access Specifiers, 'this', and 'base'
+class Entity:
+    protected:
+    int entityId
     public:
-    void setSpecies(string s):
-        this.secretSpecies = s
-    string getSpecies():
-        return this.secretSpecies
+    void setId(int id):
+        this.entityId = id
+    int getId():
+        return this.entityId
 
-class Dog extends Animal:
+class Player extends Entity:
     private:
-    string name
+    string username
+    int health
     public:
-    void setName(string n):
-        this.name = n
-    string getName():
-        return this.name
-    void bark():
-        print("Woof!")
+    void init(string name, int hp):
+        this.username = name
+        this.health = hp
+        base.setId(1)
+    string getUsername():
+        return this.username
+    int getHealth():
+        return this.health
+    void takeDamage(int amount):
+        this.health -= amount
+        if (this.health < 0):
+            this.health = 0
 
-Dog myDog = Dog()
-myDog.setName("Rex")
+Player hero = Player()
+hero.init("WolfWarrior", 100)
+hero.takeDamage(25)
 
-// [ERROR]: Accessing private member 'secretSpecies' from outside class
-myDog.secretSpecies = "Canine"
+// 7. Operators, Compound Assignments, and Pratt Precedence
+int a = 10
+int b = 20
+int c = 30
 
-// [ERROR]: 'this' used outside of class methods
-this.name = "Invalid"
+// Precedence test: arithmetic and parenthesis grouping
+int mathResult = a + b * c - (c / a) % 2
 
-// 10. Functions, Return Types, and Parameter Defaults
-int add(int a, int b = 10):
-    return a + b
+// Bitwise, shift, and logical operations
+int bitwiseResult = (a & b) | (c ^ a)
+int shiftResult = (a << 2) >> 1
+bool logicResult = (a < b) && (b <= c) || !(a == c)
+
+// Unary prefix and postfix operations
+a++
+++b
+c--
+--a
+int negated = -a
+bool inverted = !logicResult
+int bitInverted = ~bitwiseResult
+
+// Compound in-place assignment operators
+a += 5
+b -= 3
+c *= 2
+a /= 2
+b %= 4
+a &= 0xFF
+b |= 0x01
+c ^= 0x10
+a <<= 1
+b >>= 1
+
+// 8. Type Casting ('as') and Type Checking ('is')
+float castedFloat = a as float
+int[]? castedArray = null as int[]?
+bool checkType = hero is Player
+bool checkBaseType = hero is Entity
+
+// 9. Ternary Operator and Range Expressions
+string statusText = (hero.getHealth() > 50) ? "Healthy" : "Critical"
+string nestedTernary = (a > 10) ? "High" : (a > 5) ? "Medium" : "Low"
+
+// Range operator evaluation
+int[] rangeValues = 0..100
+
+// 10. Control Flow: If, Elif, Else
+if (a > b):
+    int temp = a
+    a = b
+    b = temp
+elif (a == b):
+    a = 0
+elif (b == c):
+    b = 0
+else:
+    c = 0
+
+// 11. Control Flow: While, For In, Break, Continue
+int loopCounter = 10
+while (loopCounter > 0):
+    loopCounter--
+    if (loopCounter == 5):
+        continue
+    if (loopCounter == 1):
+        break
+
+for i in 0..10:
+    a += i
+
+// 12. Functions: Parameters, Default Values, and Complex Return Types
+int add(int x, int y = 10):
+    return x + y
 
 void logMessage(string msg):
-    print(msg)
     return
 
-// [ERROR]: Missing return value in non-void function
-int err_missingReturn():
-    return
+Point? findPoint(int id):
+    if (id == 0):
+        return origin
+    return null
 
-// [ERROR]: Returning a value from a void function
-void err_voidReturnsValue():
-    return 100
-
-// [ERROR]: Return type mismatch (returning string when int is expected)
-int err_wrongReturnType():
-    return "Not an int"
-
-// [ERROR]: Positional parameter without default follows default parameter
-int err_badParamOrder(int a = 5, int b):
-    return a + b
-
-// [ERROR]: Calling function with wrong number of arguments
-int callArgCountErr = add(1, 2, 3)
-
-// [ERROR]: Calling function with incompatible argument type
-int callArgTypeErr = add("one", "two")
+int addResult = add(15)
+int explicitAddResult = add(15, 25)
+Point? lookupResult = findPoint(0)

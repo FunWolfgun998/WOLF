@@ -18,53 +18,43 @@ std::vector<Stmt> Parser::parse() {
 
 // STATEMENT PARSERS (Recursive Descent)
 Stmt Parser::parseStatement() {
-    // 1. Types (Variables OR Functions)
+    // 1. Declarations: Variables or Functions (handles ALL primitive, custom, array, and nullable types)
+    if (isDeclaration()) {
+        // Compute offset where the identifier name is located
+        size_t offset = (check(TokenType::KW_CONST)) ? 1 : 0;
+        offset++; // Skip base type
 
-    if (check(TokenType::KW_INT) || check(TokenType::KW_FLOAT) ||
-            check(TokenType::KW_CHAR) || check(TokenType::KW_STRING) ||
-            check(TokenType::KW_BOOL) || check(TokenType::KW_VOID)) {
-        // If it is a primitive array (e.g. int[] arr)
-        if (peeknNext(1).type == TokenType::L_BRACKET) {
-            return parseVarDecl();
+        while (true) {
+            if (peeknNext(offset).type == TokenType::L_BRACKET && peeknNext(offset + 1).type == TokenType::R_BRACKET) {
+                offset += 2;
+            } else if (peeknNext(offset).type == TokenType::OP_QUESTION) {
+                offset += 1;
+            } else {
+                break;
+            }
         }
-        // If it is a function (e.g. int add(...) )
-        if (peeknNext(2).type == TokenType::L_PAREN) {
+
+        // If followed by '(', it is a function declaration: "Type name("
+        if (peeknNext(offset + 1).type == TokenType::L_PAREN) {
             return parseFunctionDecl();
         }
-        // Otherwise it is a primitive variable (e.g. int x)
+
+        // Otherwise it is a variable declaration
         return parseVarDecl();
     }
-    if (check(TokenType::IDENTIFIER)) {
-        // Case A: Array of custom type -> "Point[] points"
-        if (peeknNext(1).type == TokenType::L_BRACKET &&
-            peeknNext(2).type == TokenType::R_BRACKET &&
-            peeknNext(3).type == TokenType::IDENTIFIER) {
-            return parseVarDecl();
-            }
-        // Case B: Custom type followed by name -> "Point origin"
-        if (peeknNext(1).type == TokenType::IDENTIFIER) {
-            // If there is '(' after it, it is a function that returns a class -> "Point getOrigin():"
-            if (peeknNext(2).type == TokenType::L_PAREN) {
-                return parseFunctionDecl();
-            }
-            // Otherwise it is a variable -> "Point origin = Point()"
-            return parseVarDecl();
-        }
-    }
 
-    // 2. Control Flow
+    // 2. Control Flow & Structure Statements
     if (check(TokenType::KW_IF)) return parseIfStmt();
     if (check(TokenType::KW_WHILE)) return parseWhileStmt();
     if (check(TokenType::KW_FOR)) return parseForStmt();
     if (check(TokenType::KW_STRUCT)) return parseStructDecl();
+    if (check(TokenType::KW_CLASS)) return parseClassDecl();
     if (check(TokenType::KW_RETURN)) return parseReturnStmt();
     if (check(TokenType::KW_BREAK)) return parseBreakStmt();
     if (check(TokenType::KW_CONTINUE)) return parseContinueStmt();
-    if (check(TokenType::KW_CLASS)) return parseClassDecl();
-    // Fallback: Expression Statement (e.g., "x = 5" or "functionCall()")
-    Expr expr = parseExpression();
 
-    // In WOLF, standalone expressions must end with a newline
+    // 3. Fallback: Expression Statement (e.g. "x = 5", "origin.x = 10", "print()")
+    Expr expr = parseExpression();
     consume(TokenType::NEWLINE, "Expected newline after expression.");
 
     return makeStmt<ExpressionStmt>(std::move(expr));
@@ -89,6 +79,8 @@ BlockStmt Parser::parseBlock() {
     return BlockStmt{std::move(statements)};
 }
 Stmt Parser::parseVarDecl() {
+    bool isConst = match(TokenType::KW_CONST);
+
     if (!isTypeToken(peek().type)) {
         error(peek(), "Expected type name for Variable declaration parsing.");
         throw ParseError();
@@ -96,13 +88,18 @@ Stmt Parser::parseVarDecl() {
 
     Token typeVar = advance();
 
-    // Support array types (e.g. int[], string[][])
-    while (match(TokenType::L_BRACKET)) {
-        consume(TokenType::R_BRACKET, "Expected ']' after '[' in array type declaration.");
-        typeVar.lexeme += "[]"; // Extend the type representation
+    // Consume any arbitrary sequence of array brackets and nullable modifiers (e.g. int?[], Dog[][], int?[]?)
+    while (true) {
+        if (match(TokenType::L_BRACKET)) {
+            consume(TokenType::R_BRACKET, "Expected ']' after '[' in array type declaration.");
+            typeVar.lexeme += "[]";
+        } else if (match(TokenType::OP_QUESTION)) {
+            typeVar.lexeme += "?";
+        } else {
+            break;
+        }
     }
 
-    // Now consume the variable name
     Token nameVariable = consume(TokenType::IDENTIFIER, "Expected variable name.");
 
     std::unique_ptr<Expr> initializer = nullptr;
@@ -111,19 +108,43 @@ Stmt Parser::parseVarDecl() {
     }
 
     consume(TokenType::NEWLINE, "Expected newline after variable declaration.");
-    return makeStmt<VarDeclStmt>(typeVar, nameVariable, std::move(initializer));
+    return makeStmt<VarDeclStmt>(typeVar, nameVariable, std::move(initializer), isConst);
 }
 Stmt Parser::parseFunctionDecl() {
     Token returnType = advance();
-    Token nameFunction = consume(TokenType::IDENTIFIER, "Expected function name.");
 
+    // Consume return type suffixes (e.g. Point?, int[], Dog[]?)
+    while (true) {
+        if (match(TokenType::L_BRACKET)) {
+            consume(TokenType::R_BRACKET, "Expected ']' after '[' in return type.");
+            returnType.lexeme += "[]";
+        } else if (match(TokenType::OP_QUESTION)) {
+            returnType.lexeme += "?";
+        } else {
+            break;
+        }
+    }
+
+    Token nameFunction = consume(TokenType::IDENTIFIER, "Expected function name.");
     consume(TokenType::L_PAREN, "Expected '(' after function name.");
 
     std::vector<Parameter> parameters;
-    // If there are parameters
     if (!check(TokenType::R_PAREN)) {
         do {
-            Token paramType = advance(); // We should check if the type is valid but that happened on the
+            Token paramType = advance();
+
+            // Consume parameter type suffixes (e.g. int[], string?, Dog?[]?)
+            while (true) {
+                if (match(TokenType::L_BRACKET)) {
+                    consume(TokenType::R_BRACKET, "Expected ']' after '[' in parameter type.");
+                    paramType.lexeme += "[]";
+                } else if (match(TokenType::OP_QUESTION)) {
+                    paramType.lexeme += "?";
+                } else {
+                    break;
+                }
+            }
+
             Token paramName = consume(TokenType::IDENTIFIER, "Expected parameter name.");
             std::unique_ptr<Expr> defValue = nullptr;
             if (match(TokenType::OP_ASSIGN)) {
@@ -500,6 +521,27 @@ Expr Parser::parseTernary(Expr condition, Token questionMark) {
 
     return makeExpr<TernaryExpr>(std::move(condition), questionMark, std::move(trueBranch), std::move(falseBranch));
 }
+
+Expr Parser::parseCast(Expr left, Token asToken) {
+    // Consume target type token after 'as'
+    Token targetType = advance();
+
+    // Support array casting target (e.g. expr as int[])
+    while (match(TokenType::L_BRACKET)) {
+        consume(TokenType::R_BRACKET, "Expected ']' after '[' in cast type.");
+        targetType.lexeme += "[]";
+    }
+    if (match(TokenType::OP_QUESTION)) {
+        targetType.lexeme += "?";
+    }
+
+    return makeExpr<CastExpr>(std::move(left), asToken, targetType);
+}
+
+Expr Parser::parseBase(Token token) {
+    return makeExpr<BaseExpr>(token);
+}
+
 Expr Parser::parseCall(Expr callee, Token openingParen) {
     std::vector<Expr> arguments;
     if (!check(TokenType::R_PAREN)) {
@@ -545,6 +587,8 @@ Precedence Parser::getPrecedence(TokenType type) const {
         case TokenType::OP_MOD: case TokenType::OP_BIT_AND:
         case TokenType::OP_SHIFT_LEFT: case TokenType::OP_SHIFT_RIGHT: return Precedence::FACTOR;
         case TokenType::RANGE_OP: return Precedence::COMPARISON;
+        case TokenType::KW_IS: return Precedence::COMPARISON;
+        case TokenType::KW_AS: return Precedence::COMPARISON;
         case TokenType::DOT: case TokenType::L_PAREN: case TokenType::L_BRACKET: return Precedence::CALL;
         case TokenType::OP_INC:
         case TokenType::OP_DEC:
@@ -574,6 +618,7 @@ Parser::NudHandlerMethod Parser::getNudHandler(TokenType type) const {
         case TokenType::OP_INC: case TokenType::OP_DEC: return &Parser::parseUnary;
         case TokenType::FORMAT_STRING_LITERAL: return &Parser::parseFormatString;
         case TokenType::KW_THIS: return &Parser::parseThis;
+        case TokenType::KW_BASE: return &Parser::parseBase;
 
         default: return nullptr;
     }
@@ -603,6 +648,9 @@ Parser::LedHandlerMethod Parser::getLedHandler(TokenType type) const {
         case TokenType::RANGE_OP: return &Parser::parseRange;
         case TokenType::DOT: return &Parser::parseMemberAccess;
         case TokenType::OP_QUESTION: return &Parser::parseTernary;
+        case TokenType::KW_AS: return &Parser::parseCast;
+        case TokenType::KW_IS: return &Parser::parseBinary;
+
         default: return nullptr;
     }
 }
@@ -668,6 +716,38 @@ bool Parser::isTypeToken(TokenType type) const {
         default:
             return false;
     }
+}
+bool Parser::isDeclaration() const {
+    size_t offset = 0;
+
+    // Optional 'const' modifier
+    if (peeknNext(offset).type == TokenType::KW_CONST) {
+        offset++;
+    }
+
+    // 1. Must start with a valid primitive type keyword or user-defined identifier
+    if (!isTypeToken(peeknNext(offset).type)) {
+        return false;
+    }
+    offset++;
+
+    // 2. Dynamically skip any arbitrary sequence of brackets [] and nullable modifiers ?
+    while (true) {
+        if (peeknNext(offset).type == TokenType::L_BRACKET && peeknNext(offset + 1).type == TokenType::R_BRACKET) {
+            offset += 2;
+        } else if (peeknNext(offset).type == TokenType::OP_QUESTION) {
+            offset += 1;
+        } else {
+            break;
+        }
+    }
+
+    // 3. After the full type signature, there MUST be an identifier (the variable or function name)
+    if (peeknNext(offset).type != TokenType::IDENTIFIER) {
+        return false;
+    }
+
+    return true;
 }
 
 //ERROR HANDLING

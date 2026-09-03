@@ -33,6 +33,9 @@ public:
     // Resolve a symbol looking in this scope, and if not found, recursively in parent scopes
     std::optional<Symbol> resolve(const std::string& name) const;
 
+    // Returns a direct pointer to the symbol in memory, or nullptr if not found
+    Symbol* resolveSymbol(const std::string& name);
+
     // Check if symbol exists only in the current scope (to detect duplicate variable declarations)
     bool existsInCurrent(const std::string& name) const;
 
@@ -58,6 +61,9 @@ public:
 
     // Look up a symbol from current scope up to global scope
     std::optional<Symbol> resolve(const std::string& name) const;
+
+    // Returns a direct pointer to the symbol in memory, or nullptr if not found
+    Symbol* resolveSymbol(const std::string& name);
 
     // Check if symbol exists in the current scope
     bool existsInCurrentScope(const std::string& name) const;

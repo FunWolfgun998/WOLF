@@ -25,7 +25,7 @@ add_executable(
         src/Semantic/SymbolTable.cpp
         include/Semantic/SemanticAnalyzer.h
         src/Semantic/SemanticAnalyzer.cpp
-        include/Semantic/ErrorCode.h
+        include/Semantic/DiagnosticCode.h
         src/Semantic/DiagnosticEngine.cpp
         include/Semantic/DiagnosticEngine.h
 )

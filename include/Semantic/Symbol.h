@@ -22,6 +22,7 @@ struct Symbol {
     AccessModifier access = AccessModifier::PUBLIC;
 
     // Safety flags
+    bool isUsed = false;
     bool isConstant = false;
     bool isInitialized = true;
 

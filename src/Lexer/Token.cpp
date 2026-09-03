@@ -50,6 +50,20 @@ std::string tokenTypeToString(TokenType type) {
         case TokenType::KW_TRUE: return "KW_TRUE";
         case TokenType::KW_FALSE: return "KW_FALSE";
 
+        case TokenType::KW_STATIC:    return "KW_STATIC";
+        case TokenType::KW_ABSTRACT:  return "KW_ABSTRACT";
+        case TokenType::KW_OVERRIDE:  return "KW_OVERRIDE";
+        case TokenType::KW_BASE:      return "KW_BASE";
+        case TokenType::KW_CONST:     return "KW_CONST";
+        case TokenType::KW_IMPORT:    return "KW_IMPORT";
+        case TokenType::KW_EXTERN:    return "KW_EXTERN";
+        case TokenType::KW_MATCH:     return "KW_MATCH";
+        case TokenType::KW_CASE:      return "KW_CASE";
+        case TokenType::KW_DEFAULT:   return "KW_DEFAULT";
+        case TokenType::KW_ENUM:      return "KW_ENUM";
+        case TokenType::KW_AS:        return "KW_AS";
+        case TokenType::KW_IS:        return "KW_IS";
+
         case TokenType::OP_SHIFT_LEFT: return "OP_SHIFT_LEFT";
         case TokenType::OP_SHIFT_RIGHT: return "OP_SHIFT_RIGHT";
         case TokenType::OP_SHIFT_LEFT_ASS: return "OP_SHIFT_LEFT_ASS";

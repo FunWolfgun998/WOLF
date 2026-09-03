@@ -27,10 +27,13 @@ struct FunctionDeclStmt;
 struct StructDeclStmt;
 struct ClassDeclStmt;
 struct ThisExpr;
+struct BaseExpr;
 struct ReturnStmt;
 struct BreakStmt;
 struct ContinueStmt;
 struct TernaryExpr;
+struct CastExpr;
+
 
 
 // Variant containing all possible expression types
@@ -46,7 +49,9 @@ using ExprVariant = std::variant<
     std::unique_ptr<ArrayAccessExpr>,
     std::unique_ptr<ArrayLiteralExpr>,
     std::unique_ptr<TernaryExpr>,
-    std::unique_ptr<ThisExpr>
+    std::unique_ptr<ThisExpr>,
+    std::unique_ptr<BaseExpr>,
+    std::unique_ptr<CastExpr>
 >;
 
 // Wrapper struct for an expression.

@@ -72,6 +72,8 @@ private:
     Expr parseArrayAccess(Expr indexed, Token openingBracket);
     Expr parseMemberAccess(Expr accessed, Token dot);
     Expr parseTernary(Expr condition, Token questionMark);
+    Expr parseCast(Expr left, Token asToken);
+    Expr parseBase(Token token);
 
 
     // --- 3. PRATT PARSER HELPERS (Lookup Tables) ---
@@ -101,6 +103,8 @@ private:
     bool check(TokenType type) const;
     bool isAtEnd() const;
     bool isTypeToken(TokenType type) const;
+    // Dynamic lookahead scanner: checks if upcoming tokens form a variable or function declaration
+    bool isDeclaration() const;
 
     // --- 5. ERROR HANDLING ---
     void error(const Token& token, const std::string& message);

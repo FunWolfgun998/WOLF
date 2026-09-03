@@ -453,6 +453,27 @@ void Lexer::identifier() {
         case hash("false"): type = TokenType::KW_FALSE; break;
         case hash("null"): type = TokenType::KW_NULL; break;
 
+        // OOP, Modifiers and References
+        case hash("static"):    type = TokenType::KW_STATIC; break;
+        case hash("abstract"):  type = TokenType::KW_ABSTRACT; break;
+        case hash("override"):  type = TokenType::KW_OVERRIDE; break;
+        case hash("base"):      type = TokenType::KW_BASE; break;
+        case hash("const"):     type = TokenType::KW_CONST; break;
+
+        // Modules & FFI
+        case hash("import"):    type = TokenType::KW_IMPORT; break;
+        case hash("extern"):    type = TokenType::KW_EXTERN; break;
+
+        // Pattern Matching
+        case hash("match"):     type = TokenType::KW_MATCH; break;
+        case hash("case"):      type = TokenType::KW_CASE; break;
+        case hash("default"):   type = TokenType::KW_DEFAULT; break;
+
+        // Types, Enums & Casting
+        case hash("enum"):      type = TokenType::KW_ENUM; break;
+        case hash("as"):        type = TokenType::KW_AS; break;
+        case hash("is"):        type = TokenType::KW_IS; break;
+
         default: type = TokenType::IDENTIFIER; break;
     }
 
@@ -598,11 +619,10 @@ void Lexer::charLiteral() {
         return;
     }
 
-    char value = 0;
+    uint32_t value = 0;
 
     if (peek() == '\\') {
         advance();
-
         if (isAtEnd()) {
             manageError("Unterminated character literal");
             return;
@@ -622,30 +642,57 @@ void Lexer::charLiteral() {
             default:
                 advance();
                 manageError("Invalid escape sequence in char literal");
-                // Error Recovery: skip to the closing quote
                 while (!isAtEnd() && peek() != '\'' && peek() != '\n') advance();
                 if (peek() == '\'') advance();
                 return;
         }
         advance();
+    } else {
+        // Decode complete UTF-8 multi-byte sequence
+        value = decodeUtf8();
     }
-    else {
-        value = advance();
 
-    }
-
-    // Ensure the literal is properly closed
     if (peek() != '\'') {
-        // Capture the multi-character sequence for the error message
         while (!isAtEnd() && peek() != '\'' && peek() != '\n') advance();
         if (peek() == '\'') advance();
         manageError("Unterminated or multi-character char literal");
         return;
     }
 
-    advance(); // Consume the closing quote
+    advance();
     addToken(TokenType::CHAR_LITERAL, value);
 }
+
+uint32_t Lexer::decodeUtf8() {
+    uint8_t firstByte = static_cast<uint8_t>(advance());
+    if (firstByte < 0x80) return firstByte;
+
+    uint32_t codePoint = 0;
+    int extraBytes = 0;
+
+    if ((firstByte & 0xE0) == 0xC0) { codePoint = firstByte & 0x1F; extraBytes = 1; }
+    else if ((firstByte & 0xF0) == 0xE0) { codePoint = firstByte & 0x0F; extraBytes = 2; }
+    else if ((firstByte & 0xF8) == 0xF0) { codePoint = firstByte & 0x07; extraBytes = 3; }
+    else {
+        manageError("Invalid UTF-8 starting byte");
+        return 0;
+    }
+
+    for (int i = 0; i < extraBytes; i++) {
+        if (isAtEnd()) {
+            manageError("Unterminated UTF-8 sequence");
+            return 0;
+        }
+        uint8_t b = static_cast<uint8_t>(advance());
+        if ((b & 0xC0) != 0x80) {
+            manageError("Invalid UTF-8 continuation byte");
+            return 0;
+        }
+        codePoint = (codePoint << 6) | (b & 0x3F);
+    }
+    return codePoint;
+}
+
 
 // Token Constructors
 

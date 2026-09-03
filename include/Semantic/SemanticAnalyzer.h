@@ -9,7 +9,7 @@
 #include "Type.h"
 #include "SymbolTable.h"
 #include "DiagnosticEngine.h"
-#include "ErrorCode.h"
+#include "DiagnosticCode.h"
 
 class SemanticAnalyzer {
 private:
@@ -27,11 +27,20 @@ private:
     // Memory pool owning user-defined types (classes, structs) created during analysis
     std::vector<std::unique_ptr<Type>> customTypes;
 
-    // Reports a categorized semantic error with optional fix suggestion
-    void reportError(ErrorCode code, const Token& token, const std::string& message, const std::string& hint = "");
+    // Reports an error anchored to a single token
+    void reportError(DiagnosticCode code, const Token& token, const std::string& message, const std::string& hint = "");
 
-    // Gathers all currently visible identifiers across scope stack for typo suggestions
+    // Reports an error anchored to a computed multi-character source span
+    void reportError(DiagnosticCode code, const SourceSpan& span, const std::string& message, const std::string& hint = "");
+
+    // Reports a multi-location error linking multiple source lines
+    void reportMultiSpan(DiagnosticCode code, std::string message, const std::vector<SpanLabel>& labels, std::string hint = "");
+
+    // Gathers all currently visible variable and function identifiers for typo suggestions
     std::vector<std::string> getVisibleSymbolNames() const;
+
+    // Gathers all currently visible type names (primitives, classes, structs) for type typo suggestions
+    std::vector<std::string> getVisibleTypeNames() const;
 
     // Maps a type token to its corresponding Type* pointer
     const Type* resolveTypeFromToken(const Token& typeToken);

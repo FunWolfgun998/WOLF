@@ -7,6 +7,7 @@ static const Type TYPE_CHAR  { TypeKind::PRIMITIVE, "char" };
 static const Type TYPE_STRING{ TypeKind::PRIMITIVE, "string" };
 static const Type TYPE_BOOL  { TypeKind::PRIMITIVE, "bool" };
 static const Type TYPE_VOID  { TypeKind::VOID_TYPE, "void" };
+static const Type TYPE_NULL { TypeKind::NULL_TYPE, "null", true };
 static const Type TYPE_ERROR { TypeKind::ERROR_TYPE, "<error>" };
 
 const Type* Type::getInt()    { return &TYPE_INT; }
@@ -15,6 +16,7 @@ const Type* Type::getChar()   { return &TYPE_CHAR; }
 const Type* Type::getString() { return &TYPE_STRING; }
 const Type* Type::getBool()   { return &TYPE_BOOL; }
 const Type* Type::getVoid()   { return &TYPE_VOID; }
+const Type* Type::getNull() { return &TYPE_NULL; }
 const Type* Type::getError()  { return &TYPE_ERROR; }
 
 // Pool to cache complex types (Arrays, Functions) to ensure fast pointer comparisons
@@ -50,26 +52,59 @@ const Type* Type::makeFunction(const Type* returnType, std::vector<const Type*> 
     return ptr;
 }
 
+const Type* Type::makeNullable(const Type* base) {
+    if (base->isNullable || base->isError() || base->isVoid()) return base;
+
+    auto nullableType = std::make_unique<Type>(*base); // Copy base metadata
+    nullableType->isNullable = true;
+    nullableType->name = base->name + "?";
+
+    const Type* ptr = nullableType.get();
+    typePool.push_back(std::move(nullableType));
+    return ptr;
+}
+
 bool Type::isAssignableTo(const Type* target) const {
     if (this == target) return true;
-    if (this->isError() || target->isError()) return true; // Suppress cascade errors
+    if (this->isError() || target->isError()) return true;
 
-    // Allow assigning an integer to a float (Implicit widening promotion)
+    // Void cannot be assigned to any variable
+    if (this->isVoid() || target->isVoid()) return false;
+
+    // 'null' can only be assigned to nullable target types (T?)
+    if (this->isNull()) {
+        return target->isNullable;
+    }
+
+    // Nullable types cannot be assigned to non-nullable targets without explicit check
+    if (this->isNullable && !target->isNullable) {
+        return false;
+    }
+    
+    // Non-nullable T is assignable to nullable T? (e.g. int -> int?, Dog -> Dog?)
+    if (!this->isNullable && target->isNullable) {
+        if (this->name + "?" == target->name) return true;
+    }
+
+    // Implicit numeric widening: int -> float
     if (this->isInteger() && target->isFloat()) return true;
 
-    // For Arrays: check element assignability
+    // Recursive array element assignability
     if (this->kind == TypeKind::ARRAY && target->kind == TypeKind::ARRAY) {
         return this->elementType->isAssignableTo(target->elementType);
     }
 
-    // For OOP Classes: check inheritance chain (e.g. Dog extends Animal)
+    // OOP inheritance hierarchy traversal
     if (this->kind == TypeKind::CLASS && target->kind == TypeKind::CLASS) {
         const Type* current = this->superclass;
         while (current != nullptr) {
-            if (current == target) return true;
+            if (current == target || current->name == target->name) return true;
             current = current->superclass;
         }
     }
+
+    // Match base type names ignoring nullable markers
+    if (this->name == target->name) return true;
 
     return false;
 }

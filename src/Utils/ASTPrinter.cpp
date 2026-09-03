@@ -91,6 +91,15 @@ void ASTPrinter::operator()(const std::unique_ptr<RangeExpr>& node) {
     printBranch(node->end.as, true, "End");
 }
 
+void ASTPrinter::operator()(const std::unique_ptr<CastExpr>& node) {
+    out << "CastExpr(TargetType: " << node->targetType.lexeme << ")";
+    printBranch(node->expression.as, true, "Expression");
+}
+
+void ASTPrinter::operator()(const std::unique_ptr<BaseExpr>& node) {
+    out << "BaseExpr\n";
+}
+
 // -- Statements (from StmtVariant) --
 
 void ASTPrinter::operator()(const std::unique_ptr<ExpressionStmt>& node) {
@@ -164,11 +173,11 @@ void ASTPrinter::operator()(const std::unique_ptr<ReturnStmt>& node) {
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<BreakStmt>& node) {
-    out << "BreakStmt\n";
+    out << "BreakStmt";
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<ContinueStmt>& node) {
-    out << "ContinueStmt\n";
+    out << "ContinueStmt";
 }
 
 void ASTPrinter::operator()(const std::unique_ptr<ForStmt>& node) {
@@ -179,7 +188,7 @@ void ASTPrinter::operator()(const std::unique_ptr<ForStmt>& node) {
 
 void ASTPrinter::operator()(const std::unique_ptr<FunctionDeclStmt>& node) {
     out << "FunctionDeclStmt(ReturnType: " << node->returnType.lexeme
-        << ", Name: " << node->name.lexeme << ")";
+        << ", Name: " << node->name.lexeme << ") \n";
 
     // I parametri rimangono un vettore di struct semplici, li stampiamo qui
     out << currentPrefix << "├── Parameters";

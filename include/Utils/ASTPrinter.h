@@ -62,6 +62,8 @@ public:
     void operator()(const std::unique_ptr<ArrayLiteralExpr>& node);
     void operator()(const std::unique_ptr<TernaryExpr>& node);
     void operator()(const std::unique_ptr<RangeExpr>& node);
+    void operator()(const std::unique_ptr<CastExpr>& node);
+    void operator()(const std::unique_ptr<BaseExpr>& node);
 
     // -- Statements (from StmtVariant) --
     void operator()(const std::unique_ptr<ExpressionStmt>& node);
@@ -77,5 +79,6 @@ public:
     void operator()(const std::unique_ptr<StructDeclStmt>& node);
     void operator()(const std::unique_ptr<ThisExpr>& node);
     void operator()(const std::unique_ptr<ClassDeclStmt>& node);
+
 };
 

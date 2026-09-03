@@ -67,6 +67,7 @@ struct VarDeclStmt {
     Token type;                        // Variable type (e.g. KW_INT)
     Token name;                        // Variable identifier
     std::unique_ptr<Expr> initializer; // Optional initial value
+    bool isConst = false;              // Set to true if declared with 'const'
 };
 
 struct BlockStmt {
@@ -181,6 +182,18 @@ struct TernaryExpr {
     Token questionMark; // The '?' token for error tracking
     Expr trueBranch;
     Expr falseBranch;
+};
+
+// Represents explicit type casting: expr as Type
+struct CastExpr {
+    Expr expression;
+    Token asToken;
+    Token targetType;
+};
+
+// Represents the 'base' keyword referencing superclass members
+struct BaseExpr {
+    Token keyword;
 };
 
 struct FunctionDeclStmt {

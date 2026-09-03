@@ -13,6 +13,7 @@ enum class TypeKind {
     STRUCT,
     CLASS,
     VOID_TYPE,
+    NULL_TYPE,
     ERROR_TYPE
 };
 
@@ -29,6 +30,7 @@ struct MemberInfo {
 struct Type {
     TypeKind kind;
     std::string name;
+    bool isNullable = false;
 
     // For Arrays: element type (e.g. 'int' for int[])
     const Type* elementType = nullptr;
@@ -53,6 +55,7 @@ struct Type {
     bool isVoid() const    { return kind == TypeKind::VOID_TYPE; }
     bool isError() const   { return kind == TypeKind::ERROR_TYPE; }
     bool isNumeric() const { return isInteger() || isFloat(); }
+    bool isNull() const { return kind == TypeKind::NULL_TYPE; }
 
     bool isAssignableTo(const Type* target) const;
     std::string toString() const;
@@ -64,9 +67,12 @@ struct Type {
     static const Type* getString();
     static const Type* getBool();
     static const Type* getVoid();
+    static const Type* getNull();
     static const Type* getError();
 
     // Complex Types Factory
     static const Type* makeArray(const Type* element);
     static const Type* makeFunction(const Type* returnType, std::vector<const Type*> params);
+    static const Type* makeNullable(const Type* base);
+
 };

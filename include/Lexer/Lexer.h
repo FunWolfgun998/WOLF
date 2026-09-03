@@ -45,6 +45,8 @@ private:
     void rawString();
     void formatString();
     void charLiteral();
+    // Reads a full multi-byte UTF-8 sequence and returns its 32-bit code point
+    uint32_t decodeUtf8();
     void number();
     void identifier();
     void handleIndentation();

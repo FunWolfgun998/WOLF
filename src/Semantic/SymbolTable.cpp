@@ -20,6 +20,18 @@ std::optional<Symbol> Scope::resolve(const std::string& name) const {
     return std::nullopt;
 }
 
+Symbol* Scope::resolveSymbol(const std::string& name) {
+    auto it = symbols.find(name);
+    if (it != symbols.end()) {
+        return &it->second; // Return pointer to the actual stored symbol
+    }
+    if (parent != nullptr) {
+        return parent->resolveSymbol(name);
+    }
+    return nullptr;
+}
+
+
 bool Scope::existsInCurrent(const std::string& name) const {
     return symbols.find(name) != symbols.end();
 }
@@ -48,6 +60,9 @@ std::optional<Symbol> SymbolTable::resolve(const std::string& name) const {
     return currentScope->resolve(name);
 }
 
+Symbol* SymbolTable::resolveSymbol(const std::string& name) {
+    return currentScope->resolveSymbol(name);
+}
 bool SymbolTable::existsInCurrentScope(const std::string& name) const {
     return currentScope->existsInCurrent(name);
 }
