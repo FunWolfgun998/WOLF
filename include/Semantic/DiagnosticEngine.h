@@ -91,8 +91,11 @@ public:
     // Returns true if any diagnostic has ERROR severity
     bool hasErrors() const;
 
-    // Returns the total number of accumulated diagnostics
-    size_t errorCount() const { return diagnostics.size(); }
+    // Counts only fatal errors that block compilation
+    size_t errorCount() const;
+
+    // Counts non-blocking warnings
+    size_t warningCount() const;
 
     // Accessor for the list of recorded diagnostics
     const std::vector<Diagnostic>& getDiagnostics() const { return diagnostics; }

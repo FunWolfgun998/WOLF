@@ -58,23 +58,30 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Stage 3: Semantic analysis (type checking, scope verification, flow validation)
+    // Stage 3: Semantic analysis
     std::cout << "\n--- [STAGE 3] SEMANTIC ANALYSIS ---\n";
     SemanticAnalyzer analyzer;
-
-    // Provide source text to diagnostic engine for on-demand snippet formatting
     analyzer.setSource(filename, sourceCode);
 
     bool semanticSuccess = analyzer.analyze(ast);
 
+    // Print diagnostics whenever errors OR warnings are present!
     if (!semanticSuccess) {
-        std::cout << "[FAILED] Semantic analysis reported "
-                  << analyzer.getDiagnostics().errorCount() << " error(s):\n\n";
-
-        // Print formatted rich diagnostics to standard error
+        std::cout << "[FAILED] Compilation stopped with "
+                  << analyzer.getDiagnostics().errorCount() << " error(s)";
+        if (analyzer.getDiagnostics().warningCount() > 0) {
+            std::cout << " and " << analyzer.getDiagnostics().warningCount() << " warning(s)";
+        }
+        std::cout << ":\n\n";
         analyzer.getDiagnostics().print(std::cerr, /* ideMode = */ false);
     } else {
-        std::cout << "[SUCCESS] Semantic analysis passed with 0 errors! Code is logically sound.\n";
+        if (analyzer.getDiagnostics().warningCount() > 0) {
+            std::cout << "[SUCCESS with WARNINGS] Code is valid, but found "
+                      << analyzer.getDiagnostics().warningCount() << " warning(s):\n\n";
+            analyzer.getDiagnostics().print(std::cerr, /* ideMode = */ false);
+        } else {
+            std::cout << "[SUCCESS] Semantic analysis passed with 0 errors and 0 warnings!\n";
+        }
     }
 
     // Stage 4: Visual AST tree output

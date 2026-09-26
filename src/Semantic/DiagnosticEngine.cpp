@@ -130,6 +130,22 @@ void DiagnosticEngine::reportWarning(DiagnosticCode code, const SourceSpan& span
     diagnostics.push_back(std::move(diag));
 }
 
+size_t DiagnosticEngine::errorCount() const {
+    size_t count = 0;
+    for (const auto& diag : diagnostics) {
+        if (diag.severity == DiagnosticSeverity::ERROR) count++;
+    }
+    return count;
+}
+
+size_t DiagnosticEngine::warningCount() const {
+    size_t count = 0;
+    for (const auto& diag : diagnostics) {
+        if (diag.severity == DiagnosticSeverity::WARNING) count++;
+    }
+    return count;
+}
+
 bool DiagnosticEngine::hasErrors() const {
     for (const auto& diag : diagnostics) {
         if (diag.severity == DiagnosticSeverity::ERROR) return true;
@@ -170,8 +186,8 @@ void DiagnosticEngine::print(std::ostream& out, bool ideMode) const {
 
         // Print header and source location path
         std::string sevHeader = (diag.severity == DiagnosticSeverity::WARNING) ? "\033[1;33mwarning" : "\033[1;31merror";
-        out << sevHeader << "[" << codeStr << "]\033[0m: \033[1m" << diag.message << "\033[0m\n";
-        out << "  \033[1;34m-->\033[0m " << filename << ":" << primaryLine << ":" << primaryCol << "\n";
+        out << sevHeader << "[" << codeStr << "]:\033[0m \033[1m" << diag.message << "\033[0m\n";
+        out << "  \033[1;34m--> " << filename << ":" << primaryLine << ":" << primaryCol << "\n";
         out << "\033[1;34m" << emptyGutter << "|\033[0m\n";
 
         // Sort labels in ascending order by line number

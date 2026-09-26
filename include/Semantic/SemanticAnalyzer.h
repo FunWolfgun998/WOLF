@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <unordered_map>
+#include <functional>
 #include "../AST/ASTdec.h"
 #include "../AST/ASTNodes.h"
 #include "Type.h"
@@ -50,7 +51,13 @@ private:
 
     // Extracts the primary anchor token of an expression for error highlighting
     static Token getExprToken(const Expr& expr);
-    SourceSpan getExprSpan(const Expr& expr);
+    static SourceSpan getExprSpan(const Expr& expr);
+
+    // Extracts the primary anchor token and span of a statement for error highlighting
+    static Token getStmtToken(const Stmt& stmt);
+    static SourceSpan getStmtSpan(const Stmt& stmt);
+
+    bool hasGuaranteedReturn(const Stmt& stmt);
 
 public:
     SemanticAnalyzer() = default;
@@ -96,6 +103,7 @@ public:
     const Type* operator()(const std::unique_ptr<ArrayAccessExpr>& node);
     const Type* operator()(const std::unique_ptr<ArrayLiteralExpr>& node);
     const Type* operator()(const std::unique_ptr<TernaryExpr>& node);
+    const Type* operator()(const std::unique_ptr<CastExpr>& node);
 
     // Statement visitors (execute side-effects and return void)
     void operator()(const std::unique_ptr<ExpressionStmt>& node);

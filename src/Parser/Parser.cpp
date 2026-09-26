@@ -232,10 +232,22 @@ Stmt Parser::parseClassDecl() {
         }
         // Class Members (Fields or Methods)
         if (isTypeToken(peek().type)) {
-            // Lookahead check: Type + Identifier + '(' indicates a Method
-            Stmt memberDecl = (peeknNext(2).type == TokenType::L_PAREN)
-                                ? parseFunctionDecl()
-                                : parseVarDecl();
+            bool isMethod = false;
+
+            // Case A: Standard method -> "void foo(" or "int foo("
+            if (peeknNext(2).type == TokenType::L_PAREN) {
+                isMethod = true;
+            }
+            // Case B: Nullable return method -> "Vector2? getPosition(" or "int? getCount("
+            else if (peeknNext(1).type == TokenType::OP_QUESTION && peeknNext(3).type == TokenType::L_PAREN) {
+                isMethod = true;
+            }
+            // Case C: Array return method -> "int[] getList("
+            else if (peeknNext(1).type == TokenType::L_BRACKET && peeknNext(4).type == TokenType::L_PAREN) {
+                isMethod = true;
+            }
+
+            Stmt memberDecl = isMethod ? parseFunctionDecl() : parseVarDecl();
             members.push_back(ClassMember{currentAccess, std::move(memberDecl)});
         } else {
             error(peek(), "Only access specifiers, fields, or methods are allowed inside a class.");

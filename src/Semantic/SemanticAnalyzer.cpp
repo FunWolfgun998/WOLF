@@ -110,12 +110,16 @@ bool SemanticAnalyzer::isLValue(const Expr& expr) {
 }
 
 Token SemanticAnalyzer::getExprToken(const Expr& expr) {
-    // Extract the primary source anchor token for any given expression node variant
     return std::visit([](const auto& node) -> Token {
         using T = std::decay_t<decltype(node)>;
+        // Null safety guard against uninitialized or empty variant pointers
+        if (!node) return Token(TokenType::UNKNOWN, "", 0, 0);
+
         if constexpr (std::is_same_v<T, std::unique_ptr<LiteralExpr>>) return node->value;
         if constexpr (std::is_same_v<T, std::unique_ptr<VariableExpr>>) return node->name;
         if constexpr (std::is_same_v<T, std::unique_ptr<ThisExpr>>) return node->keyword;
+        if constexpr (std::is_same_v<T, std::unique_ptr<BaseExpr>>) return node->keyword;
+        if constexpr (std::is_same_v<T, std::unique_ptr<CastExpr>>) return node->asToken;
         if constexpr (std::is_same_v<T, std::unique_ptr<BinaryExpr>>) return node->op;
         if constexpr (std::is_same_v<T, std::unique_ptr<RangeExpr>>) return node->op;
         if constexpr (std::is_same_v<T, std::unique_ptr<UnaryExpr>>) return node->op;
@@ -130,8 +134,83 @@ Token SemanticAnalyzer::getExprToken(const Expr& expr) {
 }
 
 SourceSpan SemanticAnalyzer::getExprSpan(const Expr& expr) {
-    // Construct source span directly from the extracted anchor token
     return SourceSpan(getExprToken(expr));
+}
+
+Token SemanticAnalyzer::getStmtToken(const Stmt& stmt) {
+    return std::visit([](const auto& node) -> Token {
+        using T = std::decay_t<decltype(node)>;
+        // Null safety guard against uninitialized or empty statement pointers
+        if (!node) return Token(TokenType::UNKNOWN, "", 0, 0);
+
+        if constexpr (std::is_same_v<T, std::unique_ptr<ExpressionStmt>>) return getExprToken(node->expression);
+        if constexpr (std::is_same_v<T, std::unique_ptr<VarDeclStmt>>) return node->name;
+        if constexpr (std::is_same_v<T, std::unique_ptr<BlockStmt>>) {
+            if (!node->statements.empty()) return getStmtToken(node->statements[0]);
+            return Token(TokenType::UNKNOWN, "", 0, 0);
+        }
+        if constexpr (std::is_same_v<T, std::unique_ptr<IfStmt>>) return node->keyword;
+        if constexpr (std::is_same_v<T, std::unique_ptr<WhileStmt>>) return node->keyword;
+        if constexpr (std::is_same_v<T, std::unique_ptr<ForStmt>>) return node->keyword;
+        if constexpr (std::is_same_v<T, std::unique_ptr<FunctionDeclStmt>>) return node->name;
+        if constexpr (std::is_same_v<T, std::unique_ptr<StructDeclStmt>>) return node->name;
+        if constexpr (std::is_same_v<T, std::unique_ptr<ClassDeclStmt>>) return node->name;
+        if constexpr (std::is_same_v<T, std::unique_ptr<ReturnStmt>>) return node->keyword;
+        if constexpr (std::is_same_v<T, std::unique_ptr<BreakStmt>>) return node->keyword;
+        if constexpr (std::is_same_v<T, std::unique_ptr<ContinueStmt>>) return node->keyword;
+        return Token(TokenType::UNKNOWN, "", 0, 0);
+    }, stmt.as);
+}
+
+SourceSpan SemanticAnalyzer::getStmtSpan(const Stmt& stmt) {
+    return SourceSpan(getStmtToken(stmt));
+}
+
+bool SemanticAnalyzer::hasGuaranteedReturn(const Stmt& stmt) {
+    return std::visit([this](const auto& node) -> bool {
+        using T = std::decay_t<decltype(node)>;
+        if (!node) return false;
+
+        // 1. Direct return statement guarantees termination
+        if constexpr (std::is_same_v<T, std::unique_ptr<ReturnStmt>>) {
+            return true;
+        }
+
+        // 2. Block statement terminates if any sequential statement terminates
+        if constexpr (std::is_same_v<T, std::unique_ptr<BlockStmt>>) {
+            for (size_t i = 0; i < node->statements.size(); ++i) {
+                if (hasGuaranteedReturn(node->statements[i])) {
+                    // Check for unreachable dead code following the terminating statement
+                    if (i + 1 < node->statements.size()) {
+                        diagnostics.reportWarning(
+                            DiagnosticCode::W0003_UNREACHABLE_CODE,
+                            getStmtSpan(node->statements[i + 1]),
+                            "Unreachable code detected after terminating return statement.",
+                            "remove or restructure statements following the return"
+                        );
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 3. Conditional statement terminates only if ALL branches terminate
+        if constexpr (std::is_same_v<T, std::unique_ptr<IfStmt>>) {
+            // An if without an else branch cannot guarantee a return on all paths
+            if (node->elseBranch == nullptr) return false;
+
+            if (!hasGuaranteedReturn(node->thenBranch)) return false;
+
+            for (const auto& elifBranch : node->elifBranches) {
+                if (!hasGuaranteedReturn(elifBranch.block)) return false;
+            }
+
+            return hasGuaranteedReturn(*node->elseBranch);
+        }
+
+        return false;
+    }, stmt.as);
 }
 
 const Type* SemanticAnalyzer::evaluate(const Expr& expr) {
@@ -305,6 +384,17 @@ void SemanticAnalyzer::typeCheck(const std::vector<Stmt>& ast) {
     for (const auto& stmt : ast) {
         execute(stmt);
     }
+    // Check for unused global variables after full analysis traversal
+    for (const auto& [name, sym] : symbolTable.getGlobalScope()->getAllSymbols()) {
+        if (sym.kind == SymbolKind::VARIABLE && !sym.isUsed && !name.empty() && name[0] != '_') {
+            diagnostics.reportWarning(
+                DiagnosticCode::W0001_UNUSED_VARIABLE,
+                SourceSpan(sym.token),
+                "Variable '" + name + "' is declared globally but never used.",
+                "if this is intentional, prefix the name with an underscore: '_" + name + "'"
+            );
+        }
+    }
 }
 
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<LiteralExpr>& node) {
@@ -373,13 +463,7 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<ThisExpr>& node) 
 }
 
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node) {
-    const Type* leftType = evaluate(node->left);
-    const Type* rightType = evaluate(node->right);
-
-    // Suppress secondary diagnostics on previously failed operands
-    if (leftType->isError() || rightType->isError()) return Type::getError();
-
-    // Assignment operator '='
+    // 1. Assignment operator '=' (Handle left-hand side WITHOUT uninitialized read check)
     if (node->op.type == TokenType::OP_ASSIGN) {
         if (!isLValue(node->left)) {
             std::string hint = "assign to a variable or object field instead";
@@ -390,6 +474,33 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
                         "Invalid assignment target: left-hand side is not an assignable variable.", hint);
             return Type::getError();
         }
+
+        const Type* rightType = evaluate(node->right);
+        const Type* leftType = Type::getError();
+
+        // If target is a variable, resolve its type directly and mark as initialized
+        if (auto varExpr = std::get_if<std::unique_ptr<VariableExpr>>(&node->left.as)) {
+            Symbol* sym = symbolTable.resolveSymbol((*varExpr)->name.lexeme);
+            if (sym == nullptr) {
+                reportError(DiagnosticCode::E0001_UNDECLARED_VARIABLE, (*varExpr)->name,
+                            "Variable '" + (*varExpr)->name.lexeme + "' is not declared.");
+                return Type::getError();
+            }
+            if (sym->isConstant) {
+                reportError(DiagnosticCode::E0003_CANNOT_ASSIGN_CONSTANT, getExprToken(node->left),
+                            "Cannot assign to constant variable '" + sym->name + "'.",
+                            "variables declared with 'const' are immutable");
+                return Type::getError();
+            }
+            // Mark variable as definitely initialized!
+            sym->isInitialized = true;
+            leftType = sym->type;
+        } else {
+            leftType = evaluate(node->left);
+        }
+
+        if (leftType->isError() || rightType->isError()) return Type::getError();
+
         if (!rightType->isAssignableTo(leftType)) {
             reportError(DiagnosticCode::E0006_TYPE_MISMATCH, getExprToken(node->right),
                         "Cannot assign value of type '" + rightType->toString() +
@@ -397,15 +508,13 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
                         "types must match or be implicitly convertible");
             return Type::getError();
         }
-        // If target is a variable, mark it as initialized after assignment
-        if (auto varExpr = std::get_if<std::unique_ptr<VariableExpr>>(&node->left.as)) {
-            Symbol* sym = symbolTable.resolveSymbol((*varExpr)->name.lexeme);
-            if (sym != nullptr) {
-                sym->isInitialized = true;
-            }
-        }
         return leftType;
     }
+
+    // Normal bottom-up evaluation for all other binary operators
+    const Type* leftType = evaluate(node->left);
+    const Type* rightType = evaluate(node->right);
+    if (leftType->isError() || rightType->isError()) return Type::getError();
 
     // Compound assignment operators (+=, -=, *=, /=, %=)
     if (node->op.type == TokenType::OP_PLUS_ASS || node->op.type == TokenType::OP_MIN_ASS ||
@@ -490,6 +599,17 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
         }
         return Type::getBool();
     }
+    // Handle type-testing operator 'is' (e.g. hero is Character)
+    if (node->op.type == TokenType::KW_IS) {
+        // Validate that types share an inheritance or identity relationship
+        if (!leftType->isAssignableTo(rightType) && !rightType->isAssignableTo(leftType)) {
+            reportError(DiagnosticCode::E0006_TYPE_MISMATCH, node->op,
+                        "Type check 'is' cannot compare incompatible types '" +
+                        leftType->toString() + "' and '" + rightType->toString() + "'.");
+            return Type::getError();
+        }
+        return Type::getBool();
+    }
 
     return Type::getError();
 }
@@ -555,6 +675,7 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<UnaryExpr>& node)
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<GroupingExpr>& node) {
     return evaluate(node->expression);
 }
+
 
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<CallExpr>& node) {
     const Type* calleeType = evaluate(node->callee);
@@ -692,20 +813,25 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<ArrayAccessExpr>&
 
     if (!indexType->isInteger()) {
         reportError(DiagnosticCode::E0018_INVALID_SUBSCRIPT_INDEX, getExprToken(node->index),
-                    "Array index must evaluate to an integer.",
-                    "pass an 'int' expression as array index");
+                    "Array index must evaluate to an integer.");
+    }
+
+    // Prevent direct indexing on nullable arrays (e.g. int[]? list)
+    if (arrayType->isNullable) {
+        reportError(DiagnosticCode::E0015_NULLABLE_ARRAY_SUBSCRIPT, node->openingBracket,
+                    "Cannot apply subscript operator '[]' on nullable array type '" + arrayType->name + "'.",
+                    "check for null using 'if (" + getExprToken(node->array).lexeme + " != null):' before indexing");
+        return Type::getError();
     }
 
     if (arrayType->kind != TypeKind::ARRAY) {
         reportError(DiagnosticCode::E0017_INVALID_SUBSCRIPT_TARGET, getExprToken(node->array),
-                    "Subscript operator '[]' can only be applied to array types.",
-                    "indexing is not supported on non-array types");
+                    "Subscript operator '[]' can only be applied to array types.");
         return Type::getError();
     }
 
     return arrayType->elementType;
 }
-
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<ArrayLiteralExpr>& node) {
     if (node->elements.empty()) {
         return Type::makeArray(Type::getVoid());
@@ -777,6 +903,33 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<TernaryExpr>& nod
     return trueType;
 }
 
+const Type* SemanticAnalyzer::operator()(const std::unique_ptr<CastExpr>& node) {
+    const Type* exprType = evaluate(node->expression);
+    const Type* targetType = resolveTypeFromToken(node->targetType);
+
+    if (exprType->isError() || targetType->isError()) return Type::getError();
+
+    // 1. Identity cast (T as T)
+    if (exprType == targetType) return targetType;
+
+    // 2. Numeric casting (int as float, float as int)
+    if (exprType->isNumeric() && targetType->isNumeric()) {
+        return targetType;
+    }
+
+    // 3. Downcasting and Upcasting in OOP hierarchy
+    if (exprType->kind == TypeKind::CLASS && targetType->kind == TypeKind::CLASS) {
+        if (exprType->isAssignableTo(targetType) || targetType->isAssignableTo(exprType)) {
+            return targetType;
+        }
+    }
+
+    reportError(DiagnosticCode::E0006_TYPE_MISMATCH, node->asToken,
+                "Cannot cast expression of type '" + exprType->toString() +
+                "' to incompatible target type '" + targetType->toString() + "'.");
+    return Type::getError();
+}
+
 void SemanticAnalyzer::operator()(const std::unique_ptr<ExpressionStmt>& node) {
     evaluate(node->expression);
 }
@@ -823,9 +976,10 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<VarDeclStmt>& node) {
 
 
 
-    // Define symbol with accurate initialization state
+    // Define symbol with accurate initialization and constness state
     Symbol varSym(node->name.lexeme, declaredType, SymbolKind::VARIABLE, node->name);
     varSym.isInitialized = hasInit;
+    varSym.isConstant = node->isConst; // Propagate 'const' declaration!
     varSym.isUsed = false; // Initially unused
 
     if (!symbolTable.define(varSym)) {
@@ -840,12 +994,12 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<BlockStmt>& node) {
     for (const auto& stmt : node->statements) {
         execute(stmt);
     }
-    // Check for unused local variables before exiting the scope
+
+    // Check for unused local variables and emit non-breaking warnings
     for (const auto& [name, sym] : symbolTable.getCurrentScope()->getAllSymbols()) {
-        // Warn if a local variable was declared but never read (ignore names starting with '_')
         if (sym.kind == SymbolKind::VARIABLE && !sym.isUsed && !name.empty() && name[0] != '_') {
-            diagnostics.report(
-                DiagnosticCode::E0001_UNDECLARED_VARIABLE, // or W0001_UNUSED_VARIABLE
+            diagnostics.reportWarning(
+                DiagnosticCode::W0001_UNUSED_VARIABLE,
                 SourceSpan(sym.token),
                 "Variable '" + name + "' is declared but its value is never read.",
                 "if this is intentional, prefix the name with an underscore: '_" + name + "'"
@@ -857,26 +1011,143 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<BlockStmt>& node) {
 }
 
 void SemanticAnalyzer::operator()(const std::unique_ptr<IfStmt>& node) {
+    // 1. Evaluate the condition expression and ensure it produces a boolean value
     const Type* condType = evaluate(node->condition);
     if (!condType->isBool()) {
         reportError(DiagnosticCode::E0009_NON_BOOLEAN_CONDITION, node->keyword,
                     "If condition must be a boolean expression.",
-                    "consider comparing with zero: '(value != 0)'");
+                    "consider comparing with zero or null: '(condition != 0)'");
     }
 
-    execute(node->thenBranch);
+    // 2. Recursive helper to extract variable names guaranteed non-null when the condition is true.
+    // If the condition is compound (e.g. 'a != null && b != null'), both operands must evaluate to true
+    // for the 'then' block to execute, so we recursively inspect both branches of logical AND ('&&').
+    std::function<void(const Expr&, std::vector<std::string>&)> collectNonNullVars;
+    collectNonNullVars = [&](const Expr& expr, std::vector<std::string>& outVars) {
+        const Expr* innerExpr = &expr;
 
+        // Strip any nested parentheses (GroupingExpr) to reach the underlying comparison
+        while (auto group = std::get_if<std::unique_ptr<GroupingExpr>>(&innerExpr->as)) {
+            innerExpr = &(*group)->expression;
+        }
+
+        if (auto bin = std::get_if<std::unique_ptr<BinaryExpr>>(&innerExpr->as)) {
+            // Logical AND: both sides must be true, so collect non-null variables from both operands
+            if ((*bin)->op.type == TokenType::OP_AND) {
+                collectNonNullVars((*bin)->left, outVars);
+                collectNonNullVars((*bin)->right, outVars);
+                return;
+            }
+
+            // Check for inequality against null literal: either 'var != null' or 'null != var'
+            if ((*bin)->op.type == TokenType::OP_NOT_EQ) {
+                // Case A: variable != null
+                if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&(*bin)->left.as)) {
+                    if (auto litNode = std::get_if<std::unique_ptr<LiteralExpr>>(&(*bin)->right.as)) {
+                        if ((*litNode)->value.type == TokenType::KW_NULL) {
+                            outVars.push_back((*varNode)->name.lexeme);
+                        }
+                    }
+                }
+                // Case B: null != variable
+                else if (auto litNode = std::get_if<std::unique_ptr<LiteralExpr>>(&(*bin)->left.as)) {
+                    if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&(*bin)->right.as)) {
+                        if ((*litNode)->value.type == TokenType::KW_NULL) {
+                            outVars.push_back((*varNode)->name.lexeme);
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    // 3. Helper to temporarily promote nullable variables to non-nullable within the active scope.
+    // We define a new Symbol in the current block scope with the base type (stripping '?').
+    // This locally shadows the outer nullable variable; upon exiting the scope, it reverts automatically.
+    auto applySmartCasts = [&](const std::vector<std::string>& varNames) {
+        for (const auto& varName : varNames) {
+            auto symOpt = symbolTable.resolve(varName);
+            if (symOpt.has_value() && symOpt->type->isNullable) {
+                // Strip trailing '?' suffix to resolve the underlying concrete type (e.g. "Dog?" -> "Dog")
+                std::string nonNullName = symOpt->type->name;
+                if (!nonNullName.empty() && nonNullName.back() == '?') {
+                    nonNullName.pop_back();
+                }
+
+                // Resolve the non-nullable type pointer from the cleaned name
+                Token baseTok = symOpt->token;
+                baseTok.lexeme = nonNullName;
+                const Type* nonNullType = resolveTypeFromToken(baseTok);
+
+                // Insert the promoted non-nullable symbol into the current scope (local shadowing)
+                Symbol promotedSym(varName, nonNullType, SymbolKind::VARIABLE, symOpt->token);
+                promotedSym.isInitialized = true;
+                promotedSym.isUsed = true;
+                symbolTable.define(promotedSym);
+            }
+        }
+    };
+
+    // --- PHASE 1: ANALYZE THEN BRANCH ---
+    // Extract all variables verified non-null by the root if-condition
+    std::vector<std::string> thenPromotions;
+    collectNonNullVars(node->condition, thenPromotions);
+
+    // Open an isolated block scope for the 'then' body
+    symbolTable.enterScope(ScopeKind::BLOCK);
+    // Apply local non-nullable promotions (shadowing outer nullable symbols)
+    applySmartCasts(thenPromotions);
+    // Type-check all statements inside the 'then' block
+    execute(node->thenBranch);
+    // Close the scope; all promoted shadow symbols are discarded, restoring nullable types outside
+    symbolTable.exitScope();
+
+    // --- PHASE 2: ANALYZE ELIF BRANCHES ---
     for (const auto& elifBranch : node->elifBranches) {
+        // Validate that each elif condition is boolean
         const Type* elifCondType = evaluate(elifBranch.condition);
         if (!elifCondType->isBool()) {
-            reportError(DiagnosticCode::E0009_NON_BOOLEAN_CONDITION, elifBranch.keyword,
-                        "Elif condition must be a boolean expression.");
+            reportError(DiagnosticCode::E0009_NON_BOOLEAN_CONDITION, elifBranch.keyword, "Elif condition must be a boolean expression.");
         }
+
+        // Collect non-null variables specific to this elif condition
+        std::vector<std::string> elifPromotions;
+        collectNonNullVars(elifBranch.condition, elifPromotions);
+
+        // Open an isolated block scope for this specific elif branch
+        symbolTable.enterScope(ScopeKind::BLOCK);
+        applySmartCasts(elifPromotions);
         execute(elifBranch.block);
+        symbolTable.exitScope();
     }
 
+    // --- PHASE 3: ANALYZE ELSE BRANCH ---
     if (node->elseBranch != nullptr) {
+        std::vector<std::string> elsePromotions;
+
+        // Inverted check: if condition was explicitly 'var == null', then in the 'else' branch
+        // we are guaranteed that 'var' is NOT null, so we can safely promote it!
+        const Expr* elseConditionExpr = &node->condition;
+        while (auto group = std::get_if<std::unique_ptr<GroupingExpr>>(&elseConditionExpr->as)) {
+            elseConditionExpr = &(*group)->expression;
+        }
+        if (auto bin = std::get_if<std::unique_ptr<BinaryExpr>>(&elseConditionExpr->as)) {
+            if ((*bin)->op.type == TokenType::OP_EQ_EQ) {
+                if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&(*bin)->left.as)) {
+                    if (auto litNode = std::get_if<std::unique_ptr<LiteralExpr>>(&(*bin)->right.as)) {
+                        if ((*litNode)->value.type == TokenType::KW_NULL) {
+                            elsePromotions.push_back((*varNode)->name.lexeme);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Open an isolated block scope for the 'else' body
+        symbolTable.enterScope(ScopeKind::BLOCK);
+        applySmartCasts(elsePromotions);
         execute(*node->elseBranch);
+        symbolTable.exitScope();
     }
 }
 
@@ -945,6 +1216,34 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<FunctionDeclStmt>& node)
 
     execute(node->body);
 
+    // FLOW ANALYSIS: Verify that non-void functions guarantee a return on all execution paths
+    if (!returnType->isVoid()) {
+        if (!hasGuaranteedReturn(node->body)) {
+            reportError(
+                DiagnosticCode::E0025_NOT_ALL_PATHS_RETURN,
+                node->name,
+                "Function '" + node->name.lexeme + "' does not guarantee a return value on all code paths.",
+                "ensure all branches (if, elif, else) return a value or add a final 'return' statement"
+            );
+        }
+    }
+
+    // Check for unused local variables and parameters inside function scope before exiting
+    for (const auto& [name, sym] : symbolTable.getCurrentScope()->getAllSymbols()) {
+        if (!sym.isUsed && !name.empty() && name[0] != '_') {
+            DiagnosticCode code = (sym.kind == SymbolKind::PARAMETER)
+                                    ? DiagnosticCode::W0002_UNUSED_PARAMETER
+                                    : DiagnosticCode::W0001_UNUSED_VARIABLE;
+            std::string entityStr = (sym.kind == SymbolKind::PARAMETER) ? "Parameter '" : "Local variable '";
+
+            diagnostics.reportWarning(
+                code,
+                SourceSpan(sym.token),
+                entityStr + name + "' is defined in function '" + node->name.lexeme + "' but never used.",
+                "if this is intentional, prefix with an underscore: '_" + name + "'"
+            );
+        }
+    }
     symbolTable.exitScope();
     currentFunctionReturnType = nullptr;
 }
