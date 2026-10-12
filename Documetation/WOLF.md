@@ -1403,8 +1403,6 @@ Visitor class that traverses AST nodes and writes an indented tree representatio
 
 ### Expression Visitors
 
-### Expression Visitors
-
 ### `operator()(const T&)`
 - **Signature**: `template<typename T> const Type* operator()(const T& node)`
 - **Parameters & Fields**:
