@@ -1,5 +1,6 @@
 #include "../../include/Semantic/DiagnosticEngine.h"
 #include <sstream>
+#include <utility>
 
 void DiagnosticEngine::setSource(std::string file, std::string source) {
     filename = std::move(file);
@@ -154,9 +155,33 @@ bool DiagnosticEngine::hasErrors() const {
 }
 
 void DiagnosticEngine::print(std::ostream& out, bool ideMode) const {
-    for (const auto& diag : diagnostics) {
-        std::string codeStr = diagnosticCodeToString(diag.code);
+    if (diagnostics.empty()) return;
 
+    // Helper to obtain the primary coordinate (row, column)
+    auto getPrimaryCoord = [](const Diagnostic& diag) -> std::pair<int, int> {
+        int line = diag.labels.empty() ? 1 : diag.labels[0].span.line;
+        int col = diag.labels.empty() ? 1 : diag.labels[0].span.column;
+        for (const auto& lbl : diag.labels) {
+            if (lbl.isPrimary) {
+                return {lbl.span.line, lbl.span.column};
+            }
+        }
+        return {line, col};
+    };
+
+    // Ordered copy: by row, then by column; in case of a tie, errors precede warnings
+    std::vector<Diagnostic> sortedDiagnostics = diagnostics;
+    std::stable_sort(sortedDiagnostics.begin(), sortedDiagnostics.end(),
+        [&](const Diagnostic& a, const Diagnostic& b) {
+            auto [lineA, colA] = getPrimaryCoord(a);
+            auto [lineB, colB] = getPrimaryCoord(b);
+            if (lineA != lineB) return lineA < lineB;
+            if (colA != colB) return colA < colB;
+            return static_cast<int>(a.severity) < static_cast<int>(b.severity);
+        });
+
+    for (const auto& diag : sortedDiagnostics) {
+        std::string codeStr = diagnosticCodeToString(diag.code);
         // Identify primary label coordinates for the header navigation line
         int primaryLine = diag.labels.empty() ? 1 : diag.labels[0].span.line;
         int primaryCol = diag.labels.empty() ? 1 : diag.labels[0].span.column;

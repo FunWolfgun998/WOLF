@@ -116,6 +116,8 @@ bool Type::isAssignableTo(const Type* target) const {
 
     // Recursive array element assignability (e.g. int[] -> int?[] or int[] -> int[])
     if (this->kind == TypeKind::ARRAY && target->kind == TypeKind::ARRAY) {
+        // Un letterale array vuoto (void[]) e' assegnabile a qualsiasi array target (T[], T?[], T[][])
+        if (this->elementType->isVoid()) return true;
         return this->elementType->isAssignableTo(target->elementType);
     }
 

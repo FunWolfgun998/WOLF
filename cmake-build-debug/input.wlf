@@ -1,270 +1,46 @@
-// ============================================================================
-// WOLF ULTIMATE SEMANTIC STRESS TEST & VALIDATION SUITE
-// ============================================================================
+// 1. Array vuoto: DEVE COMPILARE SENZA ERRORI
+int[] emptyArr = []
+int[][] emptyMatrix = []
 
-// ----------------------------------------------------------------------------
-// 1. PURE FORWARD STUBS & I/O SIMULATION
-// ----------------------------------------------------------------------------
-void print(string msg):
-    return
+// 2. E0041: Dichiarazione void e void[]
+void invalidVoid
+void[] invalidVoidArr
 
-void printInt(int val):
-    return
+// 3. E0008: Overflow intero a 32-bit
+int overflow = 3000000000
 
-// ----------------------------------------------------------------------------
-// 2. LITERAL OVERFLOW, 32-BIT BOUNDARIES & NUMERIC BASES
-// ----------------------------------------------------------------------------
-int validDec = 2147483647       // Max 32-bit signed integer
-int validHex = 0x7FFFFFFF
-int validBin = 0b1111111111111111111111111111111
-int validOct = 0o17777777777
+// 4. E0002: Variabile usata prima dell'inizializzazione
+int uninit
+int readUninit = uninit + 5
 
-// [ERROR E0008]: Literal exceeds 32-bit signed range
-int err_overflow = 3000000000
+// 5. E0013: Null assegnato a non-nullable
+int notNullable = null
+int assignTarget = 10
+assignTarget = null
 
-// ----------------------------------------------------------------------------
-// 3. CONSTANTS, IMMUTABILITY & MODIFIERS
-// ----------------------------------------------------------------------------
-const int MAX_LIMIT = 500
-const float RATIO = 1.618
-
-// [ERROR E0003]: Cannot assign to constant variable
-MAX_LIMIT = 600
-
-// ----------------------------------------------------------------------------
-// 4. DEFINITE ASSIGNMENT & UNINITIALIZED VARIABLE TRACKING
-// ----------------------------------------------------------------------------
-int uninitializedVar
-
-// [ERROR E0002]: Variable read before being initialized
-int err_readUninit = uninitializedVar + 10
-
-// Valid late initialization
-uninitializedVar = 42
-int validRead = uninitializedVar + 10
-
-// ----------------------------------------------------------------------------
-// 5. DEAD CODE DETECTION (UNREACHABLE STATEMENTS)
-// ----------------------------------------------------------------------------
-int deadCodeFunction():
-    return 100
-    int deadVariable = 50 // [WARNING W0003]: Unreachable code detected after return
-
-// ----------------------------------------------------------------------------
-// 6. EXHAUSTIVE RETURN FLOW CHECKING (CFG)
-// ----------------------------------------------------------------------------
-// Valid: Guaranteed return on both branches
-int validFlow(int x):
-    if (x > 0):
-        return 1
-    else:
-        return 2
-
-// [ERROR E0025]: Missing return on negative path (no else)
-int err_missingFlowIf(int x):
-    if (x > 0):
-        return 10
-
-// [ERROR E0025]: Loop might not execute or may exit without return
-int err_missingFlowWhile(int x):
-    while (x > 0):
-        return 5
-
-// ----------------------------------------------------------------------------
-// 7. NULL-SAFETY, SMART CASTING (&& CHAINS, ELIF, ELSE)
-// ----------------------------------------------------------------------------
-struct Vector2:
-    float x
-    float y
-
-class Player:
+// 6. E0014: Dereferenziazione su nullable
+class User:
     public:
-    string name
-    Vector2? target
-    void init(string n):
-        this.name = n
-        this.target = null
-    void speak():
-        print(this.name)
+    int id = 1
 
-Player? maybePlayer = null
-Player? maybeCompanion = Player()
+User? maybeUser = null
+int userId = maybeUser.id
 
-// [ERROR E0014]: Direct member access on nullable type
-maybePlayer.speak()
-
-// Valid: Smart cast in then-branch with compound &&
-if (maybePlayer != null && maybeCompanion != null):
-    maybePlayer.speak()
-    maybeCompanion.speak()
-elif (maybePlayer != null):
-    maybePlayer.speak()
-else:
-    print("No player available")
-
-// Valid: Smart cast in inverted else-branch (== null)
-if (maybePlayer == null):
-    print("Player is null")
-else:
-    maybePlayer.speak() // Promoted to Player in else!
-
-// ----------------------------------------------------------------------------
-// 8. ARRAYS, MATRIX INTERNING O(1), AND HETEROGENEOUS DEDUPLICATION
-// ----------------------------------------------------------------------------
-int[] arr1D = [1, 2, 3]
-int[][] matrix2D = [[1, 2], [3, 4]]
-int?[] nullUnionArr = [1, null, 3] // LUB unified to int?[]
-
-// [ERROR E0016]: Incompatible element types in array literal
-int[] err_hetero = [1, "two", 3]
-
-// [ERROR E0006]: Cannot assign nullable array to non-nullable variable
-int[] err_nullArrayMismatch = [1, null, 3]
-
-// ----------------------------------------------------------------------------
-// 9. OOP ENCAPSULATION, INHERITANCE CYCLES & 'this' VALIDATION
-// ----------------------------------------------------------------------------
-class Animal:
-    private:
-    string secret
+// 7. E0029: Accesso a membro protected
+class Parent:
     protected:
-    int familyId
+    int secret = 42
+
+class Unrelated:
+    void test():
+        Parent p = Parent()
+        int val = p.secret
+
+// 8. E0035: Ereditarietà ciclica
+class NodeA extends NodeB:
     public:
-    void setSecret(string s):
-        this.secret = s
+    int a = 1
 
-class Dog extends Animal:
+class NodeB extends NodeA:
     public:
-    void initDog(int id):
-        this.familyId = id
-        this.setSecret("Canine")
-
-Dog myDog = Dog()
-myDog.initDog(1)
-
-// [ERROR E0028]: Accessing private member from outside class
-myDog.secret = "Exposed"
-
-// [ERROR E0026]: 'this' used outside class method
-this.familyId = 99
-
-// ----------------------------------------------------------------------------
-// 10. TYPE CASTING ('as') AND TYPE TESTING ('is')
-// ----------------------------------------------------------------------------
-float castedFloat = 50 as float
-int truncatedInt = 9.99 as int
-bool checkIsDog = myDog is Dog
-bool checkIsAnimal = myDog is Animal
-
-// [ERROR E0006]: 'is' check between completely unrelated types
-bool err_invalidIs = myDog is Vector2
-
-// ----------------------------------------------------------------------------
-// 11. UNUSED VARIABLE LINTER WARNINGS
-// ----------------------------------------------------------------------------
-int _intentionallyUnused = 100 // Ignored by linter due to '_' prefix
-int unusedLocalWarning = 42   // [WARNING W0001]: Declared but never read
-Dog d = origin as Dog // ❌ Impossibile! Point non ha alcuna relazione con Dog!
-int[]? maybeList = null
-int x = maybeList[0] // ❌ ERRORE! maybeList potrebbe essere null!
-base.setId(1)
-
-// ============================================================================
-// WOLF COMPREHENSIVE SEMANTIC & FLOW TEST SUITE
-// ============================================================================
-
-// 1. Pure forward stubs
-void print(string _msg):
-    return
-
-// 2. Structs & Classes setup
-struct Point:
-    int x
-    int y
-
-class Entity:
-    protected:
-    int entityId
-    public:
-    void setId(int id):
-        this.entityId = id
-    int getId():
-        return this.entityId
-
-class Player extends Entity:
-    private:
-    string name
-    public:
-    void initPlayer(int id, string n):
-        base.setId(id)
-        this.name = n
-    string getName():
-        return this.name
-
-// ----------------------------------------------------------------------------
-// TEST 1: CAST 'as' (Valido vs Errore E0006)
-// ----------------------------------------------------------------------------
-int num = 10
-float validCast = num as float
-
-Point p = Point()
-// [ERROR E0006]: Cannot cast Point to Player
-Player err_badCast = p as Player
-
-// ----------------------------------------------------------------------------
-// TEST 2: SUBSCRIPT SU ARRAY NULLABILE (Errore E0015 vs Smart-Cast)
-// ----------------------------------------------------------------------------
-int[]? nullableArray = null
-
-// [ERROR E0015]: Direct subscript on nullable array is blocked!
-int err_directIndex = nullableArray[0]
-
-// Valid: Safe subscript inside null check
-if (nullableArray != null):
-    int safeVal = nullableArray[0]
-
-// ----------------------------------------------------------------------------
-// TEST 3: RISOLUZIONE 'base'
-// ----------------------------------------------------------------------------
-Player hero = Player()
-hero.initPlayer(1, "ShadowWolf")
-
-// [ERROR E0026]: 'base' used outside class
-int err_baseOutside = base.getId()
-
-// ----------------------------------------------------------------------------
-// TEST 4: DEAD CODE DOPO BREAK E CONTINUE (Warning W0003)
-// ----------------------------------------------------------------------------
-while (num > 0):
-    num--
-    if (num == 5):
-        break
-        int deadAfterBreak = 10 // [WARNING W0003]: Dead code detected!
-    else:
-        continue
-        int deadAfterContinue = 20 // [WARNING W0003]: Dead code detected!
-
-// ----------------------------------------------------------------------------
-// TEST 5: DIVISIONE PER ZERO A COMPILE-TIME (Warning W0005)
-// ----------------------------------------------------------------------------
-int err_divZero = 100 / 0 // [WARNING W0005]: Division by zero literal
-
-// ----------------------------------------------------------------------------
-// TEST 6: DEAD CODE DOPO RETURN (Warning W0003)
-// ----------------------------------------------------------------------------
-int calculate(int x):
-    if (x > 0):
-        return 1
-    else:
-        return 2
-    int deadAfterIfReturn = 50 // [WARNING W0003]: Dead code detected!
-
-// ----------------------------------------------------------------------------
-// TEST 7: FLOW RETURN MANCANTE (Errore E0025)
-// ----------------------------------------------------------------------------
-// [ERROR E0025]: Missing return on negative path
-int err_missingReturn(int x):
-    if (x > 0):
-        return x
-
-int _finalScore = calculate(5)
+    int b = 2

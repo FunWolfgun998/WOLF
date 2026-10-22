@@ -314,10 +314,10 @@ void SemanticAnalyzer::collectDeclarations(const std::vector<Stmt>& ast) {
                             }
                             curr = curr->superclass;
                         }
-
                         if (cyclic) {
-                            reportError(DiagnosticCode::E0007_UNKNOWN_TYPE_NAME, *(*classStmt)->superclass,
-                                        "Cyclic inheritance detected: class '" + classType->name + "' cannot inherit from '" + candidate->name + "'.");
+                            reportError(DiagnosticCode::E0035_CYCLIC_INHERITANCE, *(*classStmt)->superclass,
+                                        "Cyclic inheritance detected: class '" + classType->name + "' cannot inherit from '" + candidate->name + "'.",
+                                        "break the inheritance cycle");
                         } else {
                             classType->superclass = candidate;
                         }
@@ -408,9 +408,9 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<LiteralExpr>& nod
                 long long val = node->value.asInt();
                 // Verify value fits within target 32-bit signed integer boundaries
                 if (val > 2147483647LL || val < -2147483648LL) {
-                    reportError(DiagnosticCode::E0006_TYPE_MISMATCH, node->value,
+                    reportError(DiagnosticCode::E0008_INTEGER_OVERFLOW, node->value,
                                 "Integer literal '" + node->value.lexeme + "' exceeds 32-bit signed range [-2147483648, 2147483647].",
-                                "use a 64-bit type or reduce literal magnitude");
+                                "reduce literal magnitude to fit in a 32-bit integer");
                     return Type::getError();
                 }
                 return Type::getInt();
@@ -442,12 +442,11 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<VariableExpr>& no
 
     // Definite assignment check: ensure variable has a value before reading
     if (!sym->isInitialized) {
-        reportError(DiagnosticCode::E0001_UNDECLARED_VARIABLE, node->name,
+        reportError(DiagnosticCode::E0002_UNINITIALIZED_VARIABLE, node->name,
                     "Variable '" + node->name.lexeme + "' is used before being initialized.",
                     "assign a value to '" + node->name.lexeme + "' before reading it");
         return Type::getError();
     }
-
     return sym->type;
 }
 
@@ -502,10 +501,16 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
         if (leftType->isError() || rightType->isError()) return Type::getError();
 
         if (!rightType->isAssignableTo(leftType)) {
-            reportError(DiagnosticCode::E0006_TYPE_MISMATCH, getExprToken(node->right),
-                        "Cannot assign value of type '" + rightType->toString() +
-                        "' to target of type '" + leftType->toString() + "'.",
-                        "types must match or be implicitly convertible");
+            if (rightType->isNull() && !leftType->isNullable) {
+                reportError(DiagnosticCode::E0013_NULL_ASSIGNED_TO_NON_NULLABLE, getExprToken(node->right),
+                            "Cannot assign 'null' to non-nullable target of type '" + leftType->toString() + "'.",
+                            "declare target as nullable with '" + leftType->toString() + "?'");
+            } else {
+                reportError(DiagnosticCode::E0006_TYPE_MISMATCH, getExprToken(node->right),
+                            "Cannot assign value of type '" + rightType->toString() +
+                            "' to target of type '" + leftType->toString() + "'.",
+                            "types must match or be implicitly convertible");
+            }
             return Type::getError();
         }
         return leftType;
@@ -726,7 +731,7 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>
     if (baseType->isError()) return Type::getError();
     // Prevent direct member access on nullable instances
     if (baseType->isNullable) {
-        reportError(DiagnosticCode::E0030_MEMBER_NOT_FOUND, node->dot,
+        reportError(DiagnosticCode::E0014_NULLABLE_MEMBER_DEREFERENCE, node->dot,
                     "Cannot access member '" + node->member.lexeme + "' on nullable type '" + baseType->name + "'.",
                     "check for null using 'if (" + getExprToken(node->accessed).lexeme + " != null):' before accessing members");
         return Type::getError();
@@ -751,13 +756,18 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>
         return false;
     };
 
-    // Look up fields on the base class
+// Look up fields on the base class
     auto fieldIt = baseType->fields.find(node->member.lexeme);
     if (fieldIt != baseType->fields.end()) {
         if (!checkAccess(fieldIt->second, baseType)) {
-            reportError(DiagnosticCode::E0028_PRIVATE_MEMBER_ACCESS, node->member,
-                        "Cannot access 'private' field '" + node->member.lexeme + "' of class '" + baseType->name + "'.",
-                        "consider making '" + node->member.lexeme + "' public or providing a getter method");
+            DiagnosticCode errCode = (fieldIt->second.access == AccessModifier::PROTECTED)
+                                         ? DiagnosticCode::E0029_PROTECTED_MEMBER_ACCESS
+                                         : DiagnosticCode::E0028_PRIVATE_MEMBER_ACCESS;
+            std::string accessStr = (fieldIt->second.access == AccessModifier::PROTECTED) ? "protected" : "private";
+            reportError(errCode, node->member,
+                        "Cannot access '" + accessStr + "' field '" + node->member.lexeme + "' of class '" + baseType->name + "'.",
+                        accessStr == "private" ? "consider making '" + node->member.lexeme + "' public or providing a getter method"
+                                               : "protected members are only accessible within the class and its subclasses");
         }
         return fieldIt->second.type;
     }
@@ -766,9 +776,14 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>
     auto methodIt = baseType->methods.find(node->member.lexeme);
     if (methodIt != baseType->methods.end()) {
         if (!checkAccess(methodIt->second, baseType)) {
-            reportError(DiagnosticCode::E0028_PRIVATE_MEMBER_ACCESS, node->member,
-                        "Cannot access 'private' method '" + node->member.lexeme + "' of class '" + baseType->name + "'.",
-                        "private methods can only be called from inside the class");
+            DiagnosticCode errCode = (methodIt->second.access == AccessModifier::PROTECTED)
+                                         ? DiagnosticCode::E0029_PROTECTED_MEMBER_ACCESS
+                                         : DiagnosticCode::E0028_PRIVATE_MEMBER_ACCESS;
+            std::string accessStr = (methodIt->second.access == AccessModifier::PROTECTED) ? "protected" : "private";
+            reportError(errCode, node->member,
+                        "Cannot access '" + accessStr + "' method '" + node->member.lexeme + "' of class '" + baseType->name + "'.",
+                        accessStr == "private" ? "private methods can only be called from inside the class"
+                                               : "protected methods are only accessible within the class and its subclasses");
         }
         return methodIt->second.type;
     }
@@ -779,16 +794,24 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>
         auto pField = parent->fields.find(node->member.lexeme);
         if (pField != parent->fields.end()) {
             if (!checkAccess(pField->second, parent)) {
-                reportError(DiagnosticCode::E0028_PRIVATE_MEMBER_ACCESS, node->member,
-                            "Cannot access 'private' member of base class '" + parent->name + "'.");
+                DiagnosticCode errCode = (pField->second.access == AccessModifier::PROTECTED)
+                                             ? DiagnosticCode::E0029_PROTECTED_MEMBER_ACCESS
+                                             : DiagnosticCode::E0028_PRIVATE_MEMBER_ACCESS;
+                std::string accessStr = (pField->second.access == AccessModifier::PROTECTED) ? "protected" : "private";
+                reportError(errCode, node->member,
+                            "Cannot access '" + accessStr + "' member of base class '" + parent->name + "'.");
             }
             return pField->second.type;
         }
         auto pMethod = parent->methods.find(node->member.lexeme);
         if (pMethod != parent->methods.end()) {
             if (!checkAccess(pMethod->second, parent)) {
-                reportError(DiagnosticCode::E0028_PRIVATE_MEMBER_ACCESS, node->member,
-                            "Cannot access 'private' method of base class '" + parent->name + "'.");
+                DiagnosticCode errCode = (pMethod->second.access == AccessModifier::PROTECTED)
+                                             ? DiagnosticCode::E0029_PROTECTED_MEMBER_ACCESS
+                                             : DiagnosticCode::E0028_PRIVATE_MEMBER_ACCESS;
+                std::string accessStr = (pMethod->second.access == AccessModifier::PROTECTED) ? "protected" : "private";
+                reportError(errCode, node->member,
+                            "Cannot access '" + accessStr + "' method of base class '" + parent->name + "'.");
             }
             return pMethod->second.type;
         }
@@ -937,9 +960,14 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<ExpressionStmt>& node) {
 void SemanticAnalyzer::operator()(const std::unique_ptr<VarDeclStmt>& node) {
     const Type* declaredType = resolveTypeFromToken(node->type);
     // Enforce that variables cannot be declared with 'void' type
-    if (declaredType->isVoid()) {
-        reportError(DiagnosticCode::E0006_TYPE_MISMATCH, node->name,
-                    "Variable '" + node->name.lexeme + "' cannot be declared of type 'void'.",
+    const Type* checkVoidType = declaredType;
+    //Check of original type of the array
+    while (checkVoidType->kind == TypeKind::ARRAY) {
+        checkVoidType = checkVoidType->elementType;
+    }
+    if (checkVoidType->isVoid()) {
+        reportError(DiagnosticCode::E0041_VOID_VARIABLE_DECLARATION, node->name,
+                    "Variable '" + node->name.lexeme + "' cannot be declared of type '" + declaredType->toString() + "'.",
                     "variables must have a concrete, non-void data type");
         return;
     }
@@ -962,15 +990,21 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<VarDeclStmt>& node) {
     if (hasInit) {
         const Type* initType = evaluate(*node->initializer);
         if (!initType->isAssignableTo(declaredType)) {
-            std::string hint = "ensure expression type matches declared variable type";
-            if (declaredType->isString()) {
-                hint = "consider using a format string f\"...\" to convert values to string";
-            } else if (declaredType->isInteger() && initType->isFloat()) {
-                hint = "floats cannot be implicitly narrowed to int; use explicit truncation";
+            if (initType->isNull() && !declaredType->isNullable) {
+                reportError(DiagnosticCode::E0013_NULL_ASSIGNED_TO_NON_NULLABLE, getExprToken(*node->initializer),
+                            "Cannot assign 'null' to non-nullable variable '" + node->name.lexeme + "' of type '" + declaredType->toString() + "'.",
+                            "declare variable as nullable with '" + declaredType->toString() + "?'");
+            } else {
+                std::string hint = "ensure expression type matches declared variable type";
+                if (declaredType->isString()) {
+                    hint = "consider using a format string f\"...\" to convert values to string";
+                } else if (declaredType->isInteger() && initType->isFloat()) {
+                    hint = "floats cannot be implicitly narrowed to int; use explicit truncation";
+                }
+                reportError(DiagnosticCode::E0006_TYPE_MISMATCH, getExprToken(*node->initializer),
+                            "Cannot initialize variable of type '" + declaredType->toString() +
+                            "' with expression of type '" + initType->toString() + "'.", hint);
             }
-            reportError(DiagnosticCode::E0006_TYPE_MISMATCH, getExprToken(*node->initializer),
-                        "Cannot initialize variable of type '" + declaredType->toString() +
-                        "' with expression of type '" + initType->toString() + "'.", hint);
         }
     }
 
