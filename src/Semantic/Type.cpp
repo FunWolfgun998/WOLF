@@ -25,11 +25,12 @@ static std::vector<std::unique_ptr<Type>> typePool;
 static std::unordered_map<const Type*, const Type*> arrayTypeCache;
 static std::unordered_map<const Type*, const Type*> nullableTypeCache;
 
-const Type* Type::makeFunction(const Type* returnType, std::vector<const Type*> params) {
+const Type* Type::makeFunction(const Type* returnType, std::vector<const Type*> params, size_t minArity) {
     auto funcType = std::make_unique<Type>();
     funcType->kind = TypeKind::FUNCTION;
     funcType->returnType = returnType;
     funcType->paramTypes = std::move(params);
+    funcType->minArity = minArity;
 
     std::string sig = "(";
     for (size_t i = 0; i < funcType->paramTypes.size(); ++i) {

@@ -166,6 +166,29 @@ SourceSpan SemanticAnalyzer::getStmtSpan(const Stmt& stmt) {
     return SourceSpan(getStmtToken(stmt));
 }
 
+static bool isZeroLiteral(const Expr& expr) {
+    const Expr* cur = &expr;
+    while (auto group = std::get_if<std::unique_ptr<GroupingExpr>>(&cur->as)) {
+        cur = &(*group)->expression;
+    }
+    if (auto unary = std::get_if<std::unique_ptr<UnaryExpr>>(&cur->as)) {
+        if ((*unary)->op.type == TokenType::OP_MINUS || (*unary)->op.type == TokenType::OP_PLUS) {
+            return isZeroLiteral((*unary)->operand);
+        }
+    }
+    if (auto lit = std::get_if<std::unique_ptr<LiteralExpr>>(&cur->as)) {
+        TokenType t = (*lit)->value.type;
+        if (t == TokenType::INT_LITERAL || t == TokenType::HEX_LITERAL ||
+            t == TokenType::BIN_LITERAL || t == TokenType::OCT_LITERAL) {
+            return (*lit)->value.asInt() == 0;
+            }
+        if (t == TokenType::FLOAT_LITERAL) {
+            return (*lit)->value.asDouble() == 0.0;
+        }
+    }
+    return false;
+}
+
 bool SemanticAnalyzer::hasGuaranteedReturn(const Stmt& stmt) {
     return std::visit([this](const auto& node) -> bool {
         using T = std::decay_t<decltype(node)>;
@@ -177,23 +200,14 @@ bool SemanticAnalyzer::hasGuaranteedReturn(const Stmt& stmt) {
         }
 
         // 2. Block statement terminates if any sequential statement terminates
-        if constexpr (std::is_same_v<T, std::unique_ptr<BlockStmt>>) {
-            for (size_t i = 0; i < node->statements.size(); ++i) {
-                if (hasGuaranteedReturn(node->statements[i])) {
-                    // Check for unreachable dead code following the terminating statement
-                    if (i + 1 < node->statements.size()) {
-                        diagnostics.reportWarning(
-                            DiagnosticCode::W0003_UNREACHABLE_CODE,
-                            getStmtSpan(node->statements[i + 1]),
-                            "Unreachable code detected after terminating return statement.",
-                            "remove or restructure statements following the return"
-                        );
+                if constexpr (std::is_same_v<T, std::unique_ptr<BlockStmt>>) {
+                    for (size_t i = 0; i < node->statements.size(); ++i) {
+                        if (hasGuaranteedReturn(node->statements[i])) {
+                            return true;
+                        }
                     }
-                    return true;
+                    return false;
                 }
-            }
-            return false;
-        }
 
         // 3. Conditional statement terminates only if ALL branches terminate
         if constexpr (std::is_same_v<T, std::unique_ptr<IfStmt>>) {
@@ -351,11 +365,13 @@ void SemanticAnalyzer::collectDeclarations(const std::vector<Stmt>& ast) {
 
                         const Type* retType = resolveTypeFromToken((*funcDecl)->returnType);
                         std::vector<const Type*> pTypes;
+                        size_t minParams = 0;
                         for (const auto& p : (*funcDecl)->parameters) {
                             pTypes.push_back(resolveTypeFromToken(p.type));
+                            if (p.defaultValue == nullptr) minParams++;
                         }
                         classType->methods[methodName] = MemberInfo{
-                            Type::makeFunction(retType, pTypes),
+                            Type::makeFunction(retType, pTypes, minParams),
                             member.access
                         };
                     }
@@ -366,10 +382,12 @@ void SemanticAnalyzer::collectDeclarations(const std::vector<Stmt>& ast) {
         else if (auto funcStmt = std::get_if<std::unique_ptr<FunctionDeclStmt>>(&stmt.as)) {
             const Type* returnType = resolveTypeFromToken((*funcStmt)->returnType);
             std::vector<const Type*> paramTypes;
+            size_t minParams = 0;
             for (const auto& p : (*funcStmt)->parameters) {
                 paramTypes.push_back(resolveTypeFromToken(p.type));
+                if (p.defaultValue == nullptr) minParams++;
             }
-            const Type* funcType = Type::makeFunction(returnType, paramTypes);
+            const Type* funcType = Type::makeFunction(returnType, paramTypes, minParams);
 
             if (!symbolTable.define(Symbol((*funcStmt)->name.lexeme, funcType, SymbolKind::FUNCTION, (*funcStmt)->name))) {
                 reportError(DiagnosticCode::E0004_DUPLICATE_DECLARATION, (*funcStmt)->name,
@@ -461,6 +479,22 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<ThisExpr>& node) 
     return currentClass;
 }
 
+const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BaseExpr>& node) {
+    if (currentClass == nullptr) {
+        reportError(DiagnosticCode::E0026_THIS_OUTSIDE_CLASS, node->keyword,
+                    "Cannot use 'base' outside of a class method.",
+                    "'base' refers to the superclass of the enclosing class");
+        return Type::getError();
+    }
+    if (currentClass->superclass == nullptr) {
+        reportError(DiagnosticCode::E0043_INVALID_BASE_USAGE, node->keyword,
+                    "Class '" + currentClass->name + "' has no superclass to reference with 'base'.",
+                    "only classes declared with 'extends' can use 'base'");
+        return Type::getError();
+    }
+    return currentClass->superclass;
+}
+
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node) {
     // 1. Assignment operator '=' (Handle left-hand side WITHOUT uninitialized read check)
     if (node->op.type == TokenType::OP_ASSIGN) {
@@ -513,6 +547,7 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
             }
             return Type::getError();
         }
+
         return leftType;
     }
 
@@ -533,6 +568,13 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
         // Allow '+=' on strings for in-place concatenation
         if (node->op.type == TokenType::OP_PLUS_ASS && (leftType->isString() || rightType->isString())) {
             return leftType;
+        }
+        // Check division/modulo assignment by zero
+        if ((node->op.type == TokenType::OP_DIV_ASS || node->op.type == TokenType::OP_MOD_ASS) && isZeroLiteral(node->right)) {
+            reportError(DiagnosticCode::E0042_DIVISION_BY_ZERO, node->op,
+                        "Division or modulo by zero detected in compound assignment.",
+                        "cannot divide or calculate remainder with literal zero");
+            return Type::getError();
         }
         if (!leftType->isNumeric() || !rightType->isNumeric()) {
             reportError(DiagnosticCode::E0010_INVALID_OPERATOR_OPERANDS, node->op,
@@ -561,6 +603,14 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
     // Arithmetic operators (-, *, /, %)
     if (node->op.type == TokenType::OP_MINUS || node->op.type == TokenType::OP_STAR ||
         node->op.type == TokenType::OP_SLASH || node->op.type == TokenType::OP_MOD) {
+
+        if ((node->op.type == TokenType::OP_SLASH || node->op.type == TokenType::OP_MOD) && isZeroLiteral(node->right)) {
+            reportError(DiagnosticCode::E0042_DIVISION_BY_ZERO, node->op,
+                        "Division or modulo by zero detected.",
+                        "cannot divide or calculate remainder with literal zero");
+            return Type::getError();
+        }
+
         if (leftType->isInteger() && rightType->isInteger()) return Type::getInt();
         if (leftType->isNumeric() && rightType->isNumeric()) return Type::getFloat();
 
@@ -688,25 +738,44 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<CallExpr>& node) 
 
     // Instantiating a struct or class acts as a constructor returning the type instance
     if (calleeType->kind == TypeKind::CLASS || calleeType->kind == TypeKind::STRUCT) {
+        // Always evaluate all past arguments
+        for (const auto& arg : node->arguments) {
+            evaluate(arg);
+        }
+        // Currently, classes/structs only have a default constructor with no arguments.
+        if (!node->arguments.empty()) {
+            reportError(DiagnosticCode::E0032_ARGUMENT_COUNT_MISMATCH, node->paren,
+                        "Type '" + calleeType->name + "' default constructor expects 0 arguments, but received " +
+                        std::to_string(node->arguments.size()) + ".",
+                        "instantiate without arguments: '" + calleeType->name + "()'");
+        }
         return calleeType;
     }
 
     // Validate standard function invocation
     if (calleeType->kind == TypeKind::FUNCTION) {
         size_t totalParams = calleeType->paramTypes.size();
+        size_t minParams = calleeType->minArity;
         size_t passedArgs = node->arguments.size();
 
-        // Enforce maximum parameter capacity
+        // I check whether too many arguments have been passed
         if (passedArgs > totalParams) {
             reportError(DiagnosticCode::E0032_ARGUMENT_COUNT_MISMATCH, node->paren,
                         "Function expects at most " + std::to_string(totalParams) +
-                        " arguments, but received " + std::to_string(passedArgs) + ".",
+                        " argument(s), but received " + std::to_string(passedArgs) + ".",
                         "remove extraneous arguments");
-            return Type::getError();
+        }
+        // Check whether too few arguments have been passed
+        else if (passedArgs < minParams) {
+            reportError(DiagnosticCode::E0032_ARGUMENT_COUNT_MISMATCH, node->paren,
+                        "Function expects at least " + std::to_string(minParams) +
+                        " argument(s), but received " + std::to_string(passedArgs) + ".",
+                        "provide required arguments");
         }
 
-        // Validate argument type assignability
-        for (size_t i = 0; i < passedArgs; ++i) {
+        // Evaluates and validates type compatibility for all provided arguments
+        size_t checkCount = std::min(passedArgs, totalParams);
+        for (size_t i = 0; i < checkCount; ++i) {
             const Type* argType = evaluate(node->arguments[i]);
             const Type* paramType = calleeType->paramTypes[i];
             if (!argType->isAssignableTo(paramType)) {
@@ -717,7 +786,17 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<CallExpr>& node) 
                             "pass a compatible expression matching parameter type");
             }
         }
+        // If there were extra arguments, evaluate them anyway to avoid false W0001 warnings
+        for (size_t i = checkCount; i < passedArgs; ++i) {
+            evaluate(node->arguments[i]);
+        }
+
         return calleeType->returnType;
+    }
+
+    // In the case of a non-invokable callee, evaluate the arguments anyway
+    for (const auto& arg : node->arguments) {
+        evaluate(arg);
     }
 
     reportError(DiagnosticCode::E0031_NOT_CALLABLE, node->paren,
@@ -725,7 +804,6 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<CallExpr>& node) 
                 "only functions, classes, and structs can be invoked with '()'");
     return Type::getError();
 }
-
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>& node) {
     const Type* baseType = evaluate(node->accessed);
     if (baseType->isError()) return Type::getError();
@@ -1025,8 +1103,38 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<VarDeclStmt>& node) {
 
 void SemanticAnalyzer::operator()(const std::unique_ptr<BlockStmt>& node) {
     symbolTable.enterScope(ScopeKind::BLOCK);
-    for (const auto& stmt : node->statements) {
-        execute(stmt);
+
+    bool terminated = false;
+    std::string termReason;
+
+    for (size_t i = 0; i < node->statements.size(); ++i) {
+        if (terminated) {
+            diagnostics.reportWarning(
+                DiagnosticCode::W0003_UNREACHABLE_CODE,
+                getStmtSpan(node->statements[i]),
+                "Unreachable code detected after " + termReason + ".",
+                "remove or restructure statements following the termination point"
+            );
+            // Reported one time for the rest of the block
+            break;
+        }
+
+        execute(node->statements[i]);
+
+        // Check whether the current statement interrupts the flow unconditionally
+        if (std::holds_alternative<std::unique_ptr<ReturnStmt>>(node->statements[i].as)) {
+            terminated = true;
+            termReason = "return statement";
+        } else if (std::holds_alternative<std::unique_ptr<BreakStmt>>(node->statements[i].as)) {
+            terminated = true;
+            termReason = "break statement";
+        } else if (std::holds_alternative<std::unique_ptr<ContinueStmt>>(node->statements[i].as)) {
+            terminated = true;
+            termReason = "continue statement";
+        } else if (hasGuaranteedReturn(node->statements[i])) {
+            terminated = true;
+            termReason = "terminating control flow";
+        }
     }
 
     // Check for unused local variables and emit non-breaking warnings

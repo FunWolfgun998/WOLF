@@ -95,6 +95,7 @@ public:
     const Type* operator()(const std::unique_ptr<VariableExpr>& node);
     const Type* operator()(const std::unique_ptr<ThisExpr>& node);
     const Type* operator()(const std::unique_ptr<BinaryExpr>& node);
+    const Type* operator()(const std::unique_ptr<BaseExpr>& node);
     const Type* operator()(const std::unique_ptr<RangeExpr>& node);
     const Type* operator()(const std::unique_ptr<UnaryExpr>& node);
     const Type* operator()(const std::unique_ptr<GroupingExpr>& node);

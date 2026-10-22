@@ -58,6 +58,8 @@ enum class DiagnosticCode {
     E0039_CANNOT_EXTEND_FINAL_CLASS,
     E0040_DUPLICATE_CLASS_MEMBER,
     E0041_VOID_VARIABLE_DECLARATION,
+    E0042_DIVISION_BY_ZERO,
+    E0043_INVALID_BASE_USAGE,
 
     // --- WARNINGS (W): Non-breaking code smells ---
     W0001_UNUSED_VARIABLE,
@@ -120,6 +122,8 @@ inline std::string diagnosticCodeToString(DiagnosticCode code) {
         case DiagnosticCode::E0039_CANNOT_EXTEND_FINAL_CLASS:     return "E0039";
         case DiagnosticCode::E0040_DUPLICATE_CLASS_MEMBER:        return "E0040";
         case DiagnosticCode::E0041_VOID_VARIABLE_DECLARATION:     return "E0041";
+        case DiagnosticCode::E0042_DIVISION_BY_ZERO:              return "E0042";
+        case DiagnosticCode::E0043_INVALID_BASE_USAGE:            return "E0043";
 
         // Warnings
         case DiagnosticCode::W0001_UNUSED_VARIABLE:               return "W0001";

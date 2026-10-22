@@ -1,46 +1,65 @@
-// 1. Array vuoto: DEVE COMPILARE SENZA ERRORI
-int[] emptyArr = []
-int[][] emptyMatrix = []
+// ==========================================
+// 1. DIVISIONE E MODULO PER ZERO (E0042)
+// ==========================================
+int divZero = 10 / 0
+int modZero = 10 % 0
+float floatDivZero = 5.0 / 0.0
+int divParenZero = 10 / ((0))
 
-// 2. E0041: Dichiarazione void e void[]
-void invalidVoid
-void[] invalidVoidArr
+int compoundTarget = 20
+compoundTarget /= 0
+compoundTarget %= (0)
 
-// 3. E0008: Overflow intero a 32-bit
-int overflow = 3000000000
-
-// 4. E0002: Variabile usata prima dell'inizializzazione
-int uninit
-int readUninit = uninit + 5
-
-// 5. E0013: Null assegnato a non-nullable
-int notNullable = null
-int assignTarget = 10
-assignTarget = null
-
-// 6. E0014: Dereferenziazione su nullable
-class User:
-    public:
-    int id = 1
-
-User? maybeUser = null
-int userId = maybeUser.id
-
-// 7. E0029: Accesso a membro protected
-class Parent:
-    protected:
-    int secret = 42
-
-class Unrelated:
-    void test():
-        Parent p = Parent()
-        int val = p.secret
-
-// 8. E0035: Ereditarietà ciclica
-class NodeA extends NodeB:
-    public:
+// ==========================================
+// 2. DEAD CODE (W0003) IN VARI CONTESTI
+// ==========================================
+void testDeadCodeInVoid():
     int a = 1
+    return
+    int unreachableInVoid = 2
 
-class NodeB extends NodeA:
+void testDeadCodeInLoop():
+    while (true):
+        break
+        int unreachableAfterBreak = 10
+
+    for i in 0..5:
+        continue
+        int unreachableAfterContinue = 20
+
+int testDeadCodeInNonVoid():
+    return 42
+    int unreachableInNonVoid = 99
+
+// ==========================================
+// 3. CHIAMATE: TROPPO POCHI ARGOMENTI (E0032)
+// ==========================================
+int add(int a, int b):
+    return a + b
+
+int resTooFew = add(10)
+
+class Point:
     public:
-    int b = 2
+    int x = 0
+
+// Costruttore di classe con argomenti non supportati
+Point p = Point(1, 2)
+
+// ==========================================
+// 4. RISOLUZIONE DI BASE (E0043)
+// ==========================================
+class Animal:
+    public:
+    int sound():
+        return 1
+
+class Dog extends Animal:
+    public:
+    int bark():
+        return base.sound()
+
+class Standalone:
+    public:
+    int invalidBase():
+        return base.sound()

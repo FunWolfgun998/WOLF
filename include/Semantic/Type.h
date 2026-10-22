@@ -35,9 +35,10 @@ struct Type {
     // For Arrays: element type (e.g. 'int' for int[])
     const Type* elementType = nullptr;
 
-    // For Functions: return type and parameters
+    // For Functions: return type, parameters, and minimum required arguments (without defaults)
     const Type* returnType = nullptr;
     std::vector<const Type*> paramTypes;
+    size_t minArity = 0;
 
     // For Classes: inheritance link
     const Type* superclass = nullptr;
@@ -72,7 +73,6 @@ struct Type {
 
     // Complex Types Factory
     static const Type* makeArray(const Type* element);
-    static const Type* makeFunction(const Type* returnType, std::vector<const Type*> params);
+    static const Type* makeFunction(const Type* returnType, std::vector<const Type*> params, size_t minArity = 0);
     static const Type* makeNullable(const Type* base);
-
 };
