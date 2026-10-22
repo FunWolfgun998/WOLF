@@ -48,7 +48,9 @@ Stmt Parser::parseStatement() {
     if (check(TokenType::KW_WHILE)) return parseWhileStmt();
     if (check(TokenType::KW_FOR)) return parseForStmt();
     if (check(TokenType::KW_STRUCT)) return parseStructDecl();
-    if (check(TokenType::KW_CLASS)) return parseClassDecl();
+    if (check(TokenType::KW_CLASS) || (check(TokenType::KW_ABSTRACT) && peeknNext(1).type == TokenType::KW_CLASS)) {
+        return parseClassDecl();
+    }
     if (check(TokenType::KW_RETURN)) return parseReturnStmt();
     if (check(TokenType::KW_BREAK)) return parseBreakStmt();
     if (check(TokenType::KW_CONTINUE)) return parseContinueStmt();
@@ -110,7 +112,7 @@ Stmt Parser::parseVarDecl() {
     consume(TokenType::NEWLINE, "Expected newline after variable declaration.");
     return makeStmt<VarDeclStmt>(typeVar, nameVariable, std::move(initializer), isConst);
 }
-Stmt Parser::parseFunctionDecl() {
+Stmt Parser::parseFunctionDecl(bool isStatic, bool isAbstract, bool isOverride) {
     Token returnType = advance();
 
     // Consume return type suffixes (e.g. Point?, int[], Dog[]?)
@@ -155,12 +157,28 @@ Stmt Parser::parseFunctionDecl() {
     }
 
     consume(TokenType::R_PAREN, "Expected ')' after parameters.");
-    consume(TokenType::COLON, "Expected ':' before function body.");
-    consume(TokenType::NEWLINE, "Expected newline.");
 
-    Stmt body = makeStmt<BlockStmt>(parseBlock());
-    return makeStmt<FunctionDeclStmt>(returnType, nameFunction, std::move(parameters), std::move(body));
+    Stmt body;
+    // Abstract methods do not have a body or a colon
+    if (isAbstract) {
+        consume(TokenType::NEWLINE, "Expected newline after abstract method declaration.");
+        body = makeStmt<BlockStmt>(std::vector<Stmt>{});
+    } else {
+        consume(TokenType::COLON, "Expected ':' before function body.");
+        consume(TokenType::NEWLINE, "Expected newline.");
+        body = makeStmt<BlockStmt>(parseBlock());
+    }
+
+    auto decl = makeStmt<FunctionDeclStmt>(returnType, nameFunction, std::move(parameters), std::move(body));
+    auto funcPtr = std::get_if<std::unique_ptr<FunctionDeclStmt>>(&decl.as);
+    if (funcPtr && *funcPtr) {
+        (*funcPtr)->isStatic = isStatic;
+        (*funcPtr)->isAbstract = isAbstract;
+        (*funcPtr)->isOverride = isOverride;
+    }
+    return decl;
 }
+
 Stmt Parser::parseStructDecl() {
 
     Token keyword = consume(TokenType::KW_STRUCT, "Expected 'struct' for struct parsing.");
@@ -198,6 +216,7 @@ Stmt Parser::parseStructDecl() {
     return makeStmt<StructDeclStmt>(nameToken, std::move(fields));
 }
 Stmt Parser::parseClassDecl() {
+    bool isAbstractClass = match(TokenType::KW_ABSTRACT);
     consume(TokenType::KW_CLASS, "Expected 'class' keyword.");
     Token nameToken = consume(TokenType::IDENTIFIER, "Expected class name.");
 
@@ -218,27 +237,43 @@ Stmt Parser::parseClassDecl() {
 
     while (!check(TokenType::DEDENT) && !isAtEnd()) {
         if (match(TokenType::NEWLINE)) continue;
+
         // Access Specifiers (public:, private:, protected:)
         if (check(TokenType::KW_PUBLIC) || check(TokenType::KW_PRIVATE) || check(TokenType::KW_PROTECTED)) {
             Token accessTok = advance();
             consume(TokenType::COLON, "Expected ':' after access specifier.");
             consume(TokenType::NEWLINE, "Expected newline after access specifier.");
 
-            // Map token directly to enum in a single line
             currentAccess = (accessTok.type == TokenType::KW_PUBLIC) ? AccessModifier::PUBLIC :
                             (accessTok.type == TokenType::KW_PROTECTED) ? AccessModifier::PROTECTED :
                                                                           AccessModifier::PRIVATE;
             continue;
         }
+
+        // Method Modifiers (static, abstract, override)
+        bool isStatic = match(TokenType::KW_STATIC);
+        bool isAbstract = false;
+        bool isOverride = false;
+        if (!isStatic) {
+            isAbstract = match(TokenType::KW_ABSTRACT);
+            if (!isAbstract) {
+                isOverride = match(TokenType::KW_OVERRIDE);
+            }
+        }
+
         // Class Members (Fields or Methods)
         if (isTypeToken(peek().type)) {
             bool isMethod = false;
 
-            // Case A: Standard method -> "void foo(" or "int foo("
-            if (peeknNext(2).type == TokenType::L_PAREN) {
+            // Abstract or override members are strictly methods
+            if (isAbstract || isOverride) {
                 isMethod = true;
             }
-            // Case B: Nullable return method -> "Vector2? getPosition(" or "int? getCount("
+            // Case A: Standard method -> "void foo(" or "int foo("
+            else if (peeknNext(2).type == TokenType::L_PAREN) {
+                isMethod = true;
+            }
+            // Case B: Nullable return method -> "Vector2? getPosition("
             else if (peeknNext(1).type == TokenType::OP_QUESTION && peeknNext(3).type == TokenType::L_PAREN) {
                 isMethod = true;
             }
@@ -247,7 +282,7 @@ Stmt Parser::parseClassDecl() {
                 isMethod = true;
             }
 
-            Stmt memberDecl = isMethod ? parseFunctionDecl() : parseVarDecl();
+            Stmt memberDecl = isMethod ? parseFunctionDecl(isStatic, isAbstract, isOverride) : parseVarDecl();
             members.push_back(ClassMember{currentAccess, std::move(memberDecl)});
         } else {
             error(peek(), "Only access specifiers, fields, or methods are allowed inside a class.");
@@ -256,7 +291,13 @@ Stmt Parser::parseClassDecl() {
     }
 
     consume(TokenType::DEDENT, "Expected end of class block.");
-    return makeStmt<ClassDeclStmt>(nameToken, superclass, std::move(members));
+
+    auto classStmt = makeStmt<ClassDeclStmt>(nameToken, superclass, std::move(members));
+    auto ptr = std::get_if<std::unique_ptr<ClassDeclStmt>>(&classStmt.as);
+    if (ptr && *ptr) {
+        (*ptr)->isAbstract = isAbstractClass;
+    }
+    return classStmt;
 }
 
 Stmt Parser::parseIfStmt() {

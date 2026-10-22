@@ -31,6 +31,7 @@ struct Type {
     TypeKind kind;
     std::string name;
     bool isNullable = false;
+    bool isAbstract = false;
 
     // For Arrays: element type (e.g. 'int' for int[])
     const Type* elementType = nullptr;

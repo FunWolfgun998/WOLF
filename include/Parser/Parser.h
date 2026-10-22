@@ -47,7 +47,7 @@ private:
     Stmt parseIfStmt();
     Stmt parseWhileStmt();
     Stmt parseForStmt();
-    Stmt parseFunctionDecl();
+    Stmt parseFunctionDecl(bool isStatic = false, bool isAbstract = false, bool isOverride = false);
     Stmt parseStructDecl();
     Stmt parseClassDecl();
     Stmt parseReturnStmt();

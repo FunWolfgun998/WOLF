@@ -270,6 +270,7 @@ void SemanticAnalyzer::collectDeclarations(const std::vector<Stmt>& ast) {
             auto classType = std::make_unique<Type>();
             classType->kind = TypeKind::CLASS;
             classType->name = (*classStmt)->name.lexeme;
+            classType->isAbstract = (*classStmt)->isAbstract;
 
             const Type* ptr = classType.get();
             customTypes.push_back(std::move(classType));
@@ -363,6 +364,13 @@ void SemanticAnalyzer::collectDeclarations(const std::vector<Stmt>& ast) {
                             continue;
                         }
 
+                        // Abstract methods can only be declared inside abstract classes
+                        if ((*funcDecl)->isAbstract && !classType->isAbstract) {
+                            reportError(DiagnosticCode::E0037_UNIMPLEMENTED_ABSTRACT_METHOD, (*funcDecl)->name,
+                                        "Abstract method '" + methodName + "' can only be declared inside an abstract class.",
+                                        "declare class '" + classType->name + "' as 'abstract class'");
+                        }
+
                         const Type* retType = resolveTypeFromToken((*funcDecl)->returnType);
                         std::vector<const Type*> pTypes;
                         size_t minParams = 0;
@@ -370,10 +378,58 @@ void SemanticAnalyzer::collectDeclarations(const std::vector<Stmt>& ast) {
                             pTypes.push_back(resolveTypeFromToken(p.type));
                             if (p.defaultValue == nullptr) minParams++;
                         }
-                        classType->methods[methodName] = MemberInfo{
-                            Type::makeFunction(retType, pTypes, minParams),
-                            member.access
-                        };
+                        const Type* methodType = Type::makeFunction(retType, pTypes, minParams);
+
+                        // Validate override modifier (Check #5)
+                        if ((*funcDecl)->isOverride) {
+                            bool foundSuperMethod = false;
+                            const Type* ancestor = classType->superclass;
+                            while (ancestor != nullptr) {
+                                auto it = ancestor->methods.find(methodName);
+                                if (it != ancestor->methods.end()) {
+                                    foundSuperMethod = true;
+                                    // Verify signature match
+                                    if (it->second.type != methodType) {
+                                        reportError(DiagnosticCode::E0038_INVALID_OVERRIDE, (*funcDecl)->name,
+                                                    "Method '" + methodName + "' marked 'override' has a signature that does not match the base class method.",
+                                                    "signature must match: " + it->second.type->name);
+                                    }
+                                    break;
+                                }
+                                ancestor = ancestor->superclass;
+                            }
+                            if (!foundSuperMethod) {
+                                reportError(DiagnosticCode::E0038_INVALID_OVERRIDE, (*funcDecl)->name,
+                                            "Method '" + methodName + "' is marked 'override' but does not override any base class method.",
+                                            "ensure superclass defines a method with this name or remove 'override'");
+                            }
+                        }
+
+                        MemberInfo info;
+                        info.type = methodType;
+                        info.access = member.access;
+                        info.isStatic = (*funcDecl)->isStatic;
+                        info.isAbstract = (*funcDecl)->isAbstract;
+                        classType->methods[methodName] = info;
+                    }
+
+                    // Verify that concrete classes implement all inherited abstract methods
+                    if (!classType->isAbstract && classType->superclass != nullptr) {
+                        const Type* ancestor = classType->superclass;
+                        while (ancestor != nullptr) {
+                            for (const auto& [mName, mInfo] : ancestor->methods) {
+                                if (mInfo.isAbstract) {
+                                    auto localIt = classType->methods.find(mName);
+                                    if (localIt == classType->methods.end() || localIt->second.isAbstract) {
+                                        reportError(DiagnosticCode::E0037_UNIMPLEMENTED_ABSTRACT_METHOD, (*classStmt)->name,
+                                                    "Class '" + classType->name + "' does not implement inherited abstract method '" +
+                                                    mName + "' from class '" + ancestor->name + "'.",
+                                                    "implement method '" + mName + "' or declare class as 'abstract class'");
+                                    }
+                                }
+                            }
+                            ancestor = ancestor->superclass;
+                        }
                     }
                 }
             }
@@ -469,16 +525,20 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<VariableExpr>& no
 }
 
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<ThisExpr>& node) {
-    // Enforce that 'this' is strictly used within active class method scopes
     if (currentClass == nullptr) {
         reportError(DiagnosticCode::E0026_THIS_OUTSIDE_CLASS, node->keyword,
                     "Cannot use 'this' outside of a class method.",
                     "'this' refers to the instance of the enclosing class");
         return Type::getError();
     }
+    if (currentMethodIsStatic) {
+        reportError(DiagnosticCode::E0027_THIS_IN_STATIC_METHOD, node->keyword,
+                    "Cannot use 'this' inside a static method.",
+                    "static methods belong to the class and do not have an instance reference");
+        return Type::getError();
+    }
     return currentClass;
 }
-
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BaseExpr>& node) {
     if (currentClass == nullptr) {
         reportError(DiagnosticCode::E0026_THIS_OUTSIDE_CLASS, node->keyword,
@@ -738,6 +798,12 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<CallExpr>& node) 
 
     // Instantiating a struct or class acts as a constructor returning the type instance
     if (calleeType->kind == TypeKind::CLASS || calleeType->kind == TypeKind::STRUCT) {
+        if (calleeType->kind == TypeKind::CLASS && calleeType->isAbstract) {
+            reportError(DiagnosticCode::E0036_CANNOT_INSTANTIATE_ABSTRACT_CLASS, node->paren,
+                        "Cannot instantiate abstract class '" + calleeType->name + "'.",
+                        "instantiate a concrete derived class instead");
+            return Type::getError();
+        }
         // Always evaluate all past arguments
         for (const auto& arg : node->arguments) {
             evaluate(arg);
@@ -805,6 +871,15 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<CallExpr>& node) 
     return Type::getError();
 }
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>& node) {
+    // Check if member access is performed directly on a class name (e.g. Math.abs())
+    bool isStaticTarget = false;
+    if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&node->accessed.as)) {
+        auto symOpt = symbolTable.resolve((*varNode)->name.lexeme);
+        if (symOpt.has_value() && symOpt->kind == SymbolKind::CLASS) {
+            isStaticTarget = true;
+        }
+    }
+
     const Type* baseType = evaluate(node->accessed);
     if (baseType->isError()) return Type::getError();
     // Prevent direct member access on nullable instances
@@ -863,12 +938,24 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>
                         accessStr == "private" ? "private methods can only be called from inside the class"
                                                : "protected methods are only accessible within the class and its subclasses");
         }
+        // Validate static vs instance invocation
+        if (isStaticTarget && !methodIt->second.isStatic) {
+            reportError(DiagnosticCode::E0010_INVALID_OPERATOR_OPERANDS, node->member,
+                        "Cannot call non-static method '" + node->member.lexeme + "' on class '" + baseType->name + "'.",
+                        "create an instance of '" + baseType->name + "' to invoke this method");
+        } else if (!isStaticTarget && methodIt->second.isStatic) {
+            diagnostics.reportWarning(DiagnosticCode::W0008_STATIC_CALLED_ON_INSTANCE,
+                                      SourceSpan(node->member),
+                                      "Static method '" + node->member.lexeme + "' called on instance of class '" + baseType->name + "'.",
+                                      "call via class name: '" + baseType->name + "." + node->member.lexeme + "()'");
+        }
         return methodIt->second.type;
     }
 
     // Look up members in the superclass inheritance chain
     const Type* parent = baseType->superclass;
-    while (parent != nullptr) {
+    while (parent != nullptr)
+    {
         auto pField = parent->fields.find(node->member.lexeme);
         if (pField != parent->fields.end()) {
             if (!checkAccess(pField->second, parent)) {
@@ -891,9 +978,21 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<MemberAccessExpr>
                 reportError(errCode, node->member,
                             "Cannot access '" + accessStr + "' method of base class '" + parent->name + "'.");
             }
+
+            // Validate static vs instance invocation for inherited methods
+            if (isStaticTarget && !pMethod->second.isStatic) {
+                reportError(DiagnosticCode::E0010_INVALID_OPERATOR_OPERANDS, node->member,
+                            "Cannot call non-static method '" + node->member.lexeme + "' on class '" + baseType->name + "'.",
+                            "create an instance of '" + baseType->name + "' to invoke this method");
+            } else if (!isStaticTarget && pMethod->second.isStatic) {
+                diagnostics.reportWarning(DiagnosticCode::W0008_STATIC_CALLED_ON_INSTANCE,
+                                          SourceSpan(node->member),
+                                          "Static method '" + node->member.lexeme + "' called on instance of class '" + baseType->name + "'.",
+                                          "call via class name: '" + baseType->name + "." + node->member.lexeme + "()'");
+            }
+
             return pMethod->second.type;
         }
-        parent = parent->superclass;
     }
 
     // Suggest matching member on typo
@@ -1401,9 +1500,14 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<ClassDeclStmt>& node) {
     currentClass = symOpt->type;
     symbolTable.enterScope(ScopeKind::CLASS);
 
-    // Type-check method bodies within the class scope context
     for (const auto& member : node->members) {
-        execute(member.declaration);
+        if (auto funcDecl = std::get_if<std::unique_ptr<FunctionDeclStmt>>(&member.declaration.as)) {
+            currentMethodIsStatic = (*funcDecl)->isStatic;
+            execute(member.declaration);
+            currentMethodIsStatic = false;
+        } else {
+            execute(member.declaration);
+        }
     }
 
     symbolTable.exitScope();

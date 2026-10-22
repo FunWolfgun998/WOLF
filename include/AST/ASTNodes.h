@@ -14,6 +14,14 @@ struct ClassMember {
     Stmt declaration; // Holds VarDeclStmt or FunctionDeclStmt
 };
 
+// int myFunc(int a, float b):
+struct Parameter {
+    Token type;
+    Token name;
+    std::unique_ptr<Expr> defaultValue; // Optional default value (e.g. int a = 998)
+};
+
+
 // --- EXPRESSION NODES ---
 struct LiteralExpr {
     Token value; // Holds the literal value (int, float, string, etc.)
@@ -128,11 +136,22 @@ struct StructDeclStmt {
     std::vector<Stmt> fields; // Fields of the struct (must be VarDeclStmt)
 };
 
-// class Dog : Animal:
+// class Dog extends Animal:
 struct ClassDeclStmt {
     Token name;
     std::optional<Token> superclass;   // Optional base class for inheritance
     std::vector<ClassMember> members;  // List of fields and methods
+    bool isAbstract = false;           // Set to true if declared with 'abstract class'
+};
+
+struct FunctionDeclStmt {
+    Token returnType;
+    Token name;
+    std::vector<Parameter> parameters;
+    Stmt body;                         // Body of the function (empty for abstract methods)
+    bool isStatic = false;             // True if marked with 'static'
+    bool isAbstract = false;           // True if marked with 'abstract'
+    bool isOverride = false;           // True if marked with 'override'
 };
 
 // functionCall(arg1, arg2)
@@ -170,13 +189,6 @@ struct ForStmt {
     Stmt body;         // Body of the loop
 };
 
-// int myFunc(int a, float b):
-struct Parameter {
-    Token type;
-    Token name;
-    std::unique_ptr<Expr> defaultValue; // Optional default value (e.g. int a = 998)
-};
-
 struct TernaryExpr {
     Expr condition;
     Token questionMark; // The '?' token for error tracking
@@ -194,13 +206,6 @@ struct CastExpr {
 // Represents the 'base' keyword referencing superclass members
 struct BaseExpr {
     Token keyword;
-};
-
-struct FunctionDeclStmt {
-    Token returnType;
-    Token name;
-    std::vector<Parameter> parameters;
-    Stmt body; // Body of the function
 };
 
 

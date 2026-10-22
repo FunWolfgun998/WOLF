@@ -1,65 +1,45 @@
-// ==========================================
-// 1. DIVISIONE E MODULO PER ZERO (E0042)
-// ==========================================
-int divZero = 10 / 0
-int modZero = 10 % 0
-float floatDivZero = 5.0 / 0.0
-int divParenZero = 10 / ((0))
-
-int compoundTarget = 20
-compoundTarget /= 0
-compoundTarget %= (0)
-
-// ==========================================
-// 2. DEAD CODE (W0003) IN VARI CONTESTI
-// ==========================================
-void testDeadCodeInVoid():
-    int a = 1
-    return
-    int unreachableInVoid = 2
-
-void testDeadCodeInLoop():
-    while (true):
-        break
-        int unreachableAfterBreak = 10
-
-    for i in 0..5:
-        continue
-        int unreachableAfterContinue = 20
-
-int testDeadCodeInNonVoid():
-    return 42
-    int unreachableInNonVoid = 99
-
-// ==========================================
-// 3. CHIAMATE: TROPPO POCHI ARGOMENTI (E0032)
-// ==========================================
-int add(int a, int b):
-    return a + b
-
-int resTooFew = add(10)
-
-class Point:
+// 1. ABSTRACT CLASS E METODI (E0036 ed E0037)
+abstract class Shape:
     public:
-    int x = 0
+    abstract int getArea()
 
-// Costruttore di classe con argomenti non supportati
-Point p = Point(1, 2)
+// Tentativo illegale di istanziare classe astratta (E0036)
+Shape s = Shape()
 
-// ==========================================
-// 4. RISOLUZIONE DI BASE (E0043)
-// ==========================================
-class Animal:
+// Classe concreta che non implementa getArea() (E0037)
+class IncompleteCircle extends Shape:
     public:
-    int sound():
-        return 1
+    int radius = 5
 
-class Dog extends Animal:
+// 2. OVERRIDE VALIDATION (E0038)
+class Square extends Shape:
     public:
-    int bark():
-        return base.sound()
+    // Override valido
+    override int getArea():
+        return 16
 
-class Standalone:
+    // Override non valido: firma non corrispondente (E0038)
+    override int unknownMethod():
+        return 0
+
+// 3. STATIC VS INSTANCE (E0027, E0010, W0008)
+class MathHelper:
     public:
-    int invalidBase():
-        return base.sound()
+    static int add(int a, int b):
+        return a + b
+
+    int multiply(int a, int b):
+        return a * b
+
+    static int invalidThis():
+        return this.multiply(1, 2)  // 'this' in metodo statico (E0027)
+
+// Chiamata statica valida
+int res = MathHelper.add(10, 20)
+
+// Chiamata non-statica da nome classe (E0010)
+int badCall = MathHelper.multiply(2, 3)
+
+// Chiamata statica da istanza (W0008)
+MathHelper helper = MathHelper()
+int warnCall = helper.add(5, 5)

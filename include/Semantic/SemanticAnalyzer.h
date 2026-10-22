@@ -23,6 +23,7 @@ private:
     // Active context pointers for contextual validation
     const Type* currentClass = nullptr;
     const Type* currentFunctionReturnType = nullptr;
+    bool currentMethodIsStatic = false;
     int loopDepth = 0;
 
     // Memory pool owning user-defined types (classes, structs) created during analysis
