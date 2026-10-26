@@ -59,6 +59,21 @@ private:
     static SourceSpan getStmtSpan(const Stmt& stmt);
 
     bool hasGuaranteedReturn(const Stmt& stmt);
+    
+    // Tracks promoted variable names for true and false branch outcomes
+    struct ConditionPromotions {
+        std::vector<std::string> truePromotions;  // Guaranteed non-null when condition is true
+        std::vector<std::string> falsePromotions; // Guaranteed non-null when condition is false
+    };
+
+    // Recursively analyzes condition expressions to determine smart-cast targets
+    ConditionPromotions analyzeCondition(const Expr& expr);
+
+    // Injects locally promoted non-nullable symbols into the active scope
+    void applySmartCasts(const std::vector<std::string>& varNames);
+
+    // Checks if a statement guarantees unconditional exit (return, break, continue)
+    bool hasGuaranteedTermination(const Stmt& stmt);
 
 public:
     SemanticAnalyzer() = default;

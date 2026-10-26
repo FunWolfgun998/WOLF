@@ -1,45 +1,39 @@
-// 1. ABSTRACT CLASS E METODI (E0036 ed E0037)
-abstract class Shape:
+class Node:
     public:
-    abstract int getArea()
+    int value = 42
+    Node? next = null
 
-// Tentativo illegale di istanziare classe astratta (E0036)
-Shape s = Shape()
+// 1. SHORT-CIRCUIT IN CONDITION (user != null && user.value > 0)
+void testShortCircuit(Node? n):
+    if (n != null && n.value > 0):
+        int val = n.value
 
-// Classe concreta che non implementa getArea() (E0037)
-class IncompleteCircle extends Shape:
-    public:
-    int radius = 5
+// 2. WHILE LOOP SMART-CAST
+void testWhileLoop(Node? head):
+    while (head != null):
+        int v = head.value
+        head = head.next
 
-// 2. OVERRIDE VALIDATION (E0038)
-class Square extends Shape:
-    public:
-    // Override valido
-    override int getArea():
-        return 16
+// 3. TERNARY SMART-CAST
+int testTernary(Node? n):
+    return n != null ? n.value : 0
 
-    // Override non valido: firma non corrispondente (E0038)
-    override int unknownMethod():
-        return 0
+// 4. GUARD CLAUSE / EARLY EXIT
+int testGuardClause(Node? n):
+    if (n == null):
+        return -1
 
-// 3. STATIC VS INSTANCE (E0027, E0010, W0008)
-class MathHelper:
-    public:
-    static int add(int a, int b):
-        return a + b
+    // n is guaranteed non-null here!
+    return n.value
 
-    int multiply(int a, int b):
-        return a * b
+// 5. CONST IMMUTABILITY PRESERVATION IN SMART-CAST
+void testConstSmartCast(Node? n):
+    const Node? cNode = n
+    if (cNode != null):
+        // cNode is promoted to non-null, but MUST remain immutable (const)!
+        cNode = null // Error E0003
 
-    static int invalidThis():
-        return this.multiply(1, 2)  // 'this' in metodo statico (E0027)
-
-// Chiamata statica valida
-int res = MathHelper.add(10, 20)
-
-// Chiamata non-statica da nome classe (E0010)
-int badCall = MathHelper.multiply(2, 3)
-
-// Chiamata statica da istanza (W0008)
-MathHelper helper = MathHelper()
-int warnCall = helper.add(5, 5)
+// 6. FOR-LOOP NULLABLE ARRAY CHECK
+void testNullableArrayIteration(int[]? nullableList):
+    for item in nullableList: // Error E0015
+        int x = item

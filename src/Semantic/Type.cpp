@@ -79,11 +79,22 @@ const Type* Type::makeNullable(const Type* base) {
     auto nullableType = std::make_unique<Type>(*base);
     nullableType->isNullable = true;
     nullableType->name = base->name + "?";
+    nullableType->nonNullableType = base; // Link back to canonical base type
 
     const Type* ptr = nullableType.get();
     nullableTypeCache[base] = ptr;
     typePool.push_back(std::move(nullableType));
     return ptr;
+}
+
+const Type* Type::getNonNullable(const Type* type) {
+    if (type == nullptr || !type->isNullable) {
+        return type;
+    }
+    if (type->nonNullableType != nullptr) {
+        return type->nonNullableType;
+    }
+    return type;
 }
 
 

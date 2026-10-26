@@ -18,6 +18,7 @@ enum class SymbolKind {
 struct Symbol {
     std::string name = "";
     const Type* type = nullptr;
+    const Type* originalType = nullptr;
     SymbolKind kind = SymbolKind::VARIABLE;
     AccessModifier access = AccessModifier::PUBLIC;
 

@@ -33,6 +33,9 @@ struct Type {
     bool isNullable = false;
     bool isAbstract = false;
 
+    // Direct pointer to the underlying non-nullable base type (if isNullable is true)
+    const Type* nonNullableType = nullptr;
+
     // For Arrays: element type (e.g. 'int' for int[])
     const Type* elementType = nullptr;
 
@@ -76,4 +79,5 @@ struct Type {
     static const Type* makeArray(const Type* element);
     static const Type* makeFunction(const Type* returnType, std::vector<const Type*> params, size_t minArity = 0);
     static const Type* makeNullable(const Type* base);
+    static const Type* getNonNullable(const Type* type);
 };

@@ -64,6 +64,9 @@ Stmt Parser::parseStatement() {
 BlockStmt Parser::parseBlock() {
     std::vector<Stmt> statements;
 
+    // Drain empty lines and comments before expecting the indent token
+    while (match(TokenType::NEWLINE)) continue;
+
     // A block MUST begin with an increase in indentation
     consume(TokenType::INDENT, "Expected indented block.");
 

@@ -227,6 +227,136 @@ bool SemanticAnalyzer::hasGuaranteedReturn(const Stmt& stmt) {
     }, stmt.as);
 }
 
+void SemanticAnalyzer::applySmartCasts(const std::vector<std::string>& varNames) {
+    for (const auto& varName : varNames) {
+        auto symOpt = symbolTable.resolve(varName);
+        if (symOpt.has_value() && symOpt->type->isNullable) {
+            const Type* nonNullType = Type::getNonNullable(symOpt->type);
+
+            // Re-define symbol locally with non-nullable type while preserving all properties
+            Symbol promotedSym(varName, nonNullType, symOpt->kind, symOpt->token, symOpt->access);
+            promotedSym.isInitialized = true;
+            promotedSym.isUsed = true;
+            promotedSym.isConstant = symOpt->isConstant; // Preserve const immutability flag
+            promotedSym.originalType = symOpt->type; // Save original nullable type (e.g. Node?)
+
+            symbolTable.define(promotedSym);
+        }
+    }
+}
+
+SemanticAnalyzer::ConditionPromotions SemanticAnalyzer::analyzeCondition(const Expr& expr) {
+    ConditionPromotions result;
+    const Expr* innerExpr = &expr;
+
+    // Unwrap grouping parentheses
+    while (auto group = std::get_if<std::unique_ptr<GroupingExpr>>(&innerExpr->as)) {
+        innerExpr = &(*group)->expression;
+    }
+
+    // 1. Binary comparisons
+    if (auto bin = std::get_if<std::unique_ptr<BinaryExpr>>(&innerExpr->as)) {
+        // Logical AND: both sides must hold true
+        if ((*bin)->op.type == TokenType::OP_AND) {
+            auto leftRes = analyzeCondition((*bin)->left);
+            auto rightRes = analyzeCondition((*bin)->right);
+
+            result.truePromotions = std::move(leftRes.truePromotions);
+            result.truePromotions.insert(result.truePromotions.end(),
+                                         rightRes.truePromotions.begin(),
+                                         rightRes.truePromotions.end());
+            return result;
+        }
+
+        // Logical OR: if whole condition is false, both sides must be false
+        if ((*bin)->op.type == TokenType::OP_OR) {
+            auto leftRes = analyzeCondition((*bin)->left);
+            auto rightRes = analyzeCondition((*bin)->right);
+
+            result.falsePromotions = std::move(leftRes.falsePromotions);
+            result.falsePromotions.insert(result.falsePromotions.end(),
+                                          rightRes.falsePromotions.begin(),
+                                          rightRes.falsePromotions.end());
+            return result;
+        }
+
+        // Variable != null: non-null when true, null when false
+        if ((*bin)->op.type == TokenType::OP_NOT_EQ) {
+            if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&(*bin)->left.as)) {
+                if (auto litNode = std::get_if<std::unique_ptr<LiteralExpr>>(&(*bin)->right.as)) {
+                    if ((*litNode)->value.type == TokenType::KW_NULL) {
+                        result.truePromotions.push_back((*varNode)->name.lexeme);
+                    }
+                }
+            } else if (auto litNode = std::get_if<std::unique_ptr<LiteralExpr>>(&(*bin)->left.as)) {
+                if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&(*bin)->right.as)) {
+                    if ((*litNode)->value.type == TokenType::KW_NULL) {
+                        result.truePromotions.push_back((*varNode)->name.lexeme);
+                    }
+                }
+            }
+        }
+
+        // Variable == null: null when true, non-null when false
+        if ((*bin)->op.type == TokenType::OP_EQ_EQ) {
+            if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&(*bin)->left.as)) {
+                if (auto litNode = std::get_if<std::unique_ptr<LiteralExpr>>(&(*bin)->right.as)) {
+                    if ((*litNode)->value.type == TokenType::KW_NULL) {
+                        result.falsePromotions.push_back((*varNode)->name.lexeme);
+                    }
+                }
+            } else if (auto litNode = std::get_if<std::unique_ptr<LiteralExpr>>(&(*bin)->left.as)) {
+                if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&(*bin)->right.as)) {
+                    if ((*litNode)->value.type == TokenType::KW_NULL) {
+                        result.falsePromotions.push_back((*varNode)->name.lexeme);
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Logical NOT (!): inverts true and false branch expectations
+    if (auto unary = std::get_if<std::unique_ptr<UnaryExpr>>(&innerExpr->as)) {
+        if ((*unary)->op.type == TokenType::OP_NOT) {
+            auto innerRes = analyzeCondition((*unary)->operand);
+            result.truePromotions = std::move(innerRes.falsePromotions);
+            result.falsePromotions = std::move(innerRes.truePromotions);
+            return result;
+        }
+    }
+
+    return result;
+}
+
+bool SemanticAnalyzer::hasGuaranteedTermination(const Stmt& stmt) {
+    return std::visit([this](const auto& n) -> bool {
+        using T = std::decay_t<decltype(n)>;
+        if (!n) return false;
+
+        if constexpr (std::is_same_v<T, std::unique_ptr<ReturnStmt>>) return true;
+        if constexpr (std::is_same_v<T, std::unique_ptr<BreakStmt>>) return true;
+        if constexpr (std::is_same_v<T, std::unique_ptr<ContinueStmt>>) return true;
+
+        if constexpr (std::is_same_v<T, std::unique_ptr<BlockStmt>>) {
+            for (const auto& s : n->statements) {
+                if (hasGuaranteedTermination(s)) return true;
+            }
+            return false;
+        }
+
+        if constexpr (std::is_same_v<T, std::unique_ptr<IfStmt>>) {
+            if (n->elseBranch == nullptr) return false;
+            if (!hasGuaranteedTermination(n->thenBranch)) return false;
+            for (const auto& elif : n->elifBranches) {
+                if (!hasGuaranteedTermination(elif.block)) return false;
+            }
+            return hasGuaranteedTermination(*n->elseBranch);
+        }
+
+        return false;
+    }, stmt.as);
+}
+
 const Type* SemanticAnalyzer::evaluate(const Expr& expr) {
     // Dispatch expression visitor via std::visit
     return std::visit(*this, expr.as);
@@ -556,7 +686,7 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BaseExpr>& node) 
 }
 
 const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node) {
-    // 1. Assignment operator '=' (Handle left-hand side WITHOUT uninitialized read check)
+    // 1. Assignment operator '='
     if (node->op.type == TokenType::OP_ASSIGN) {
         if (!isLValue(node->left)) {
             std::string hint = "assign to a variable or object field instead";
@@ -571,7 +701,6 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
         const Type* rightType = evaluate(node->right);
         const Type* leftType = Type::getError();
 
-        // If target is a variable, resolve its type directly and mark as initialized
         if (auto varExpr = std::get_if<std::unique_ptr<VariableExpr>>(&node->left.as)) {
             Symbol* sym = symbolTable.resolveSymbol((*varExpr)->name.lexeme);
             if (sym == nullptr) {
@@ -585,9 +714,30 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
                             "variables declared with 'const' are immutable");
                 return Type::getError();
             }
-            // Mark variable as definitely initialized!
             sym->isInitialized = true;
-            leftType = sym->type;
+
+            // Traverse parent scopes to retrieve the original declared type prior to smart-cast promotions
+            const Type* originalType = sym->type;
+            auto parentScope = symbolTable.getCurrentScope()->getParent();
+            while (parentScope != nullptr) {
+                auto outerSym = parentScope->resolve((*varExpr)->name.lexeme);
+                if (outerSym.has_value() && outerSym->type->isNullable) {
+                    originalType = outerSym->type;
+                    break;
+                }
+                parentScope = parentScope->getParent();
+            }
+
+            // If assigning a value compatible with the original declared type:
+            if (rightType->isAssignableTo(originalType)) {
+                // If assigned value is nullable, demote the local narrowed symbol back to nullable
+                if (rightType->isNullable && !sym->type->isNullable) {
+                    sym->type = originalType;
+                }
+                leftType = originalType;
+            } else {
+                leftType = sym->type;
+            }
         } else {
             leftType = evaluate(node->left);
         }
@@ -611,7 +761,40 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
         return leftType;
     }
 
-    // Normal bottom-up evaluation for all other binary operators
+    // 2. Logical AND short-circuit (Must be evaluated BEFORE evaluating node->right!)
+    if (node->op.type == TokenType::OP_AND) {
+        const Type* leftType = evaluate(node->left);
+        if (leftType->isError()) return Type::getError();
+        if (!leftType->isBool()) {
+            reportError(DiagnosticCode::E0009_NON_BOOLEAN_CONDITION, node->op,
+                        "Logical operators require boolean operands.",
+                        "use comparison expressions producing 'bool'");
+            return Type::getError();
+        }
+
+        // Apply promotions from left condition before evaluating right operand
+        auto leftCond = analyzeCondition(node->left);
+        const Type* rightType = nullptr;
+        if (!leftCond.truePromotions.empty()) {
+            symbolTable.enterScope(ScopeKind::BLOCK);
+            applySmartCasts(leftCond.truePromotions);
+            rightType = evaluate(node->right);
+            symbolTable.exitScope();
+        } else {
+            rightType = evaluate(node->right);
+        }
+
+        if (rightType->isError()) return Type::getError();
+        if (!rightType->isBool()) {
+            reportError(DiagnosticCode::E0009_NON_BOOLEAN_CONDITION, node->op,
+                        "Logical operators require boolean operands.",
+                        "use comparison expressions producing 'bool'");
+            return Type::getError();
+        }
+        return Type::getBool();
+    }
+
+    // 3. Normal bottom-up evaluation for all other binary operators
     const Type* leftType = evaluate(node->left);
     const Type* rightType = evaluate(node->right);
     if (leftType->isError() || rightType->isError()) return Type::getError();
@@ -625,11 +808,9 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
                         "Left-hand side of compound assignment is not assignable.");
             return Type::getError();
         }
-        // Allow '+=' on strings for in-place concatenation
         if (node->op.type == TokenType::OP_PLUS_ASS && (leftType->isString() || rightType->isString())) {
             return leftType;
         }
-        // Check division/modulo assignment by zero
         if ((node->op.type == TokenType::OP_DIV_ASS || node->op.type == TokenType::OP_MOD_ASS) && isZeroLiteral(node->right)) {
             reportError(DiagnosticCode::E0042_DIVISION_BY_ZERO, node->op,
                         "Division or modulo by zero detected in compound assignment.",
@@ -704,8 +885,8 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
         return Type::getBool();
     }
 
-    // Logical boolean operators (&&, ||)
-    if (node->op.type == TokenType::OP_AND || node->op.type == TokenType::OP_OR) {
+    // Logical OR (||)
+    if (node->op.type == TokenType::OP_OR) {
         if (!leftType->isBool() || !rightType->isBool()) {
             reportError(DiagnosticCode::E0009_NON_BOOLEAN_CONDITION, node->op,
                         "Logical operators require boolean operands.",
@@ -714,9 +895,9 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<BinaryExpr>& node
         }
         return Type::getBool();
     }
-    // Handle type-testing operator 'is' (e.g. hero is Character)
+
+    // Type check 'is'
     if (node->op.type == TokenType::KW_IS) {
-        // Validate that types share an inheritance or identity relationship
         if (!leftType->isAssignableTo(rightType) && !rightType->isAssignableTo(leftType)) {
             reportError(DiagnosticCode::E0006_TYPE_MISMATCH, node->op,
                         "Type check 'is' cannot compare incompatible types '" +
@@ -1089,8 +1270,29 @@ const Type* SemanticAnalyzer::operator()(const std::unique_ptr<TernaryExpr>& nod
                     "ensure the condition expression evaluates to 'bool'");
     }
 
-    const Type* trueType = evaluate(node->trueBranch);
-    const Type* falseType = evaluate(node->falseBranch);
+    auto condPromotions = analyzeCondition(node->condition);
+
+    // Evaluate true branch with non-null promotions
+    const Type* trueType = nullptr;
+    if (!condPromotions.truePromotions.empty()) {
+        symbolTable.enterScope(ScopeKind::BLOCK);
+        applySmartCasts(condPromotions.truePromotions);
+        trueType = evaluate(node->trueBranch);
+        symbolTable.exitScope();
+    } else {
+        trueType = evaluate(node->trueBranch);
+    }
+
+    // Evaluate false branch with inverted non-null promotions
+    const Type* falseType = nullptr;
+    if (!condPromotions.falsePromotions.empty()) {
+        symbolTable.enterScope(ScopeKind::BLOCK);
+        applySmartCasts(condPromotions.falsePromotions);
+        falseType = evaluate(node->falseBranch);
+        symbolTable.exitScope();
+    } else {
+        falseType = evaluate(node->falseBranch);
+    }
 
     if (!falseType->isAssignableTo(trueType) && !trueType->isAssignableTo(falseType)) {
         reportError(DiagnosticCode::E0011_INCOMPATIBLE_TERNARY_BRANCHES, node->questionMark,
@@ -1214,11 +1416,20 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<BlockStmt>& node) {
                 "Unreachable code detected after " + termReason + ".",
                 "remove or restructure statements following the termination point"
             );
-            // Reported one time for the rest of the block
             break;
         }
 
         execute(node->statements[i]);
+
+        // Guard clause smart casting: if an if-statement terminates, condition was false for remaining code
+        if (auto ifNode = std::get_if<std::unique_ptr<IfStmt>>(&node->statements[i].as)) {
+            if ((*ifNode)->elseBranch == nullptr && (*ifNode)->elifBranches.empty()) {
+                if (hasGuaranteedTermination((*ifNode)->thenBranch)) {
+                    auto condPromotions = analyzeCondition((*ifNode)->condition);
+                    applySmartCasts(condPromotions.falsePromotions);
+                }
+            }
+        }
 
         // Check whether the current statement interrupts the flow unconditionally
         if (std::holds_alternative<std::unique_ptr<ReturnStmt>>(node->statements[i].as)) {
@@ -1252,7 +1463,6 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<BlockStmt>& node) {
 }
 
 void SemanticAnalyzer::operator()(const std::unique_ptr<IfStmt>& node) {
-    // 1. Evaluate the condition expression and ensure it produces a boolean value
     const Type* condType = evaluate(node->condition);
     if (!condType->isBool()) {
         reportError(DiagnosticCode::E0009_NON_BOOLEAN_CONDITION, node->keyword,
@@ -1260,133 +1470,34 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<IfStmt>& node) {
                     "consider comparing with zero or null: '(condition != 0)'");
     }
 
-    // 2. Recursive helper to extract variable names guaranteed non-null when the condition is true.
-    // If the condition is compound (e.g. 'a != null && b != null'), both operands must evaluate to true
-    // for the 'then' block to execute, so we recursively inspect both branches of logical AND ('&&').
-    std::function<void(const Expr&, std::vector<std::string>&)> collectNonNullVars;
-    collectNonNullVars = [&](const Expr& expr, std::vector<std::string>& outVars) {
-        const Expr* innerExpr = &expr;
+    auto rootPromotions = analyzeCondition(node->condition);
 
-        // Strip any nested parentheses (GroupingExpr) to reach the underlying comparison
-        while (auto group = std::get_if<std::unique_ptr<GroupingExpr>>(&innerExpr->as)) {
-            innerExpr = &(*group)->expression;
-        }
-
-        if (auto bin = std::get_if<std::unique_ptr<BinaryExpr>>(&innerExpr->as)) {
-            // Logical AND: both sides must be true, so collect non-null variables from both operands
-            if ((*bin)->op.type == TokenType::OP_AND) {
-                collectNonNullVars((*bin)->left, outVars);
-                collectNonNullVars((*bin)->right, outVars);
-                return;
-            }
-
-            // Check for inequality against null literal: either 'var != null' or 'null != var'
-            if ((*bin)->op.type == TokenType::OP_NOT_EQ) {
-                // Case A: variable != null
-                if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&(*bin)->left.as)) {
-                    if (auto litNode = std::get_if<std::unique_ptr<LiteralExpr>>(&(*bin)->right.as)) {
-                        if ((*litNode)->value.type == TokenType::KW_NULL) {
-                            outVars.push_back((*varNode)->name.lexeme);
-                        }
-                    }
-                }
-                // Case B: null != variable
-                else if (auto litNode = std::get_if<std::unique_ptr<LiteralExpr>>(&(*bin)->left.as)) {
-                    if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&(*bin)->right.as)) {
-                        if ((*litNode)->value.type == TokenType::KW_NULL) {
-                            outVars.push_back((*varNode)->name.lexeme);
-                        }
-                    }
-                }
-            }
-        }
-    };
-
-    // 3. Helper to temporarily promote nullable variables to non-nullable within the active scope.
-    // We define a new Symbol in the current block scope with the base type (stripping '?').
-    // This locally shadows the outer nullable variable; upon exiting the scope, it reverts automatically.
-    auto applySmartCasts = [&](const std::vector<std::string>& varNames) {
-        for (const auto& varName : varNames) {
-            auto symOpt = symbolTable.resolve(varName);
-            if (symOpt.has_value() && symOpt->type->isNullable) {
-                // Strip trailing '?' suffix to resolve the underlying concrete type (e.g. "Dog?" -> "Dog")
-                std::string nonNullName = symOpt->type->name;
-                if (!nonNullName.empty() && nonNullName.back() == '?') {
-                    nonNullName.pop_back();
-                }
-
-                // Resolve the non-nullable type pointer from the cleaned name
-                Token baseTok = symOpt->token;
-                baseTok.lexeme = nonNullName;
-                const Type* nonNullType = resolveTypeFromToken(baseTok);
-
-                // Insert the promoted non-nullable symbol into the current scope (local shadowing)
-                Symbol promotedSym(varName, nonNullType, SymbolKind::VARIABLE, symOpt->token);
-                promotedSym.isInitialized = true;
-                promotedSym.isUsed = true;
-                symbolTable.define(promotedSym);
-            }
-        }
-    };
-
-    // --- PHASE 1: ANALYZE THEN BRANCH ---
-    // Extract all variables verified non-null by the root if-condition
-    std::vector<std::string> thenPromotions;
-    collectNonNullVars(node->condition, thenPromotions);
-
-    // Open an isolated block scope for the 'then' body
+    // --- PHASE 1: THEN BRANCH ---
     symbolTable.enterScope(ScopeKind::BLOCK);
-    // Apply local non-nullable promotions (shadowing outer nullable symbols)
-    applySmartCasts(thenPromotions);
-    // Type-check all statements inside the 'then' block
+    applySmartCasts(rootPromotions.truePromotions);
     execute(node->thenBranch);
-    // Close the scope; all promoted shadow symbols are discarded, restoring nullable types outside
     symbolTable.exitScope();
 
-    // --- PHASE 2: ANALYZE ELIF BRANCHES ---
+    // --- PHASE 2: ELIF BRANCHES ---
     for (const auto& elifBranch : node->elifBranches) {
-        // Validate that each elif condition is boolean
         const Type* elifCondType = evaluate(elifBranch.condition);
         if (!elifCondType->isBool()) {
-            reportError(DiagnosticCode::E0009_NON_BOOLEAN_CONDITION, elifBranch.keyword, "Elif condition must be a boolean expression.");
+            reportError(DiagnosticCode::E0009_NON_BOOLEAN_CONDITION, elifBranch.keyword,
+                        "Elif condition must be a boolean expression.");
         }
 
-        // Collect non-null variables specific to this elif condition
-        std::vector<std::string> elifPromotions;
-        collectNonNullVars(elifBranch.condition, elifPromotions);
+        auto elifPromotions = analyzeCondition(elifBranch.condition);
 
-        // Open an isolated block scope for this specific elif branch
         symbolTable.enterScope(ScopeKind::BLOCK);
-        applySmartCasts(elifPromotions);
+        applySmartCasts(elifPromotions.truePromotions);
         execute(elifBranch.block);
         symbolTable.exitScope();
     }
 
-    // --- PHASE 3: ANALYZE ELSE BRANCH ---
+    // --- PHASE 3: ELSE BRANCH ---
     if (node->elseBranch != nullptr) {
-        std::vector<std::string> elsePromotions;
-
-        // Inverted check: if condition was explicitly 'var == null', then in the 'else' branch
-        // we are guaranteed that 'var' is NOT null, so we can safely promote it!
-        const Expr* elseConditionExpr = &node->condition;
-        while (auto group = std::get_if<std::unique_ptr<GroupingExpr>>(&elseConditionExpr->as)) {
-            elseConditionExpr = &(*group)->expression;
-        }
-        if (auto bin = std::get_if<std::unique_ptr<BinaryExpr>>(&elseConditionExpr->as)) {
-            if ((*bin)->op.type == TokenType::OP_EQ_EQ) {
-                if (auto varNode = std::get_if<std::unique_ptr<VariableExpr>>(&(*bin)->left.as)) {
-                    if (auto litNode = std::get_if<std::unique_ptr<LiteralExpr>>(&(*bin)->right.as)) {
-                        if ((*litNode)->value.type == TokenType::KW_NULL) {
-                            elsePromotions.push_back((*varNode)->name.lexeme);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Open an isolated block scope for the 'else' body
         symbolTable.enterScope(ScopeKind::BLOCK);
-        applySmartCasts(elsePromotions);
+        applySmartCasts(rootPromotions.falsePromotions);
         execute(*node->elseBranch);
         symbolTable.exitScope();
     }
@@ -1400,8 +1511,17 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<WhileStmt>& node) {
                     "consider comparing explicitly: '(condition != 0)'");
     }
 
+    auto condPromotions = analyzeCondition(node->condition);
+
     loopDepth++;
-    execute(node->body);
+    if (!condPromotions.truePromotions.empty()) {
+        symbolTable.enterScope(ScopeKind::BLOCK);
+        applySmartCasts(condPromotions.truePromotions);
+        execute(node->body);
+        symbolTable.exitScope();
+    } else {
+        execute(node->body);
+    }
     loopDepth--;
 }
 
@@ -1411,6 +1531,11 @@ void SemanticAnalyzer::operator()(const std::unique_ptr<ForStmt>& node) {
         reportError(DiagnosticCode::E0010_INVALID_OPERATOR_OPERANDS, node->keyword,
                     "For loop iterable must evaluate to an array or range.",
                     "use a range expression (e.g. '0..10') or an array variable");
+    } else if (iterableType->isNullable) {
+        // Enforce null safety on array iterations
+        reportError(DiagnosticCode::E0015_NULLABLE_ARRAY_SUBSCRIPT, node->keyword,
+                    "Cannot iterate over nullable array '" + getExprToken(node->iterable).lexeme + "' of type '" + iterableType->name + "'.",
+                    "verify that the array is not null before the loop");
     }
 
     loopDepth++;
